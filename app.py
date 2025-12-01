@@ -13,19 +13,19 @@ from pyvis.network import Network
 import re
 from urllib.parse import urlparse
 
-# Učitaj .env fajl
+# Load .env file
 load_dotenv()
 
-# Učitaj API ključ iz .env fajla
+# Load API key from .env file
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
-# Konfiguriši Gemini AI sa API ključem
+# Configure Gemini AI with API key
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 else:
-    st.error("❌ GEMINI_API_KEY nije pronađen u .env fajlu! Molimo proverite .env fajl.")
+    st.error("❌ GEMINI_API_KEY not found in .env file! Please check the .env file.")
 
-# Konfiguracija Streamlit stranice
+# Streamlit page configuration
 st.set_page_config(
     page_title="Sitemap Generator",
     page_icon="🗺️",
@@ -33,37 +33,28 @@ st.set_page_config(
 )
 
 st.title("🗺️ Sitemap Generator")
-st.markdown("Uploaduj CSV fajl sa pitanjima i odgovorima, i generiši detaljnu sitemapu pomoću Gemini AI-ja")
+st.markdown("Upload a CSV file with questions and answers, and generate a detailed sitemap using Gemini AI")
 
-# Sidebar za konfiguraciju
+# Sidebar for instructions
 with st.sidebar:
-    st.header("⚙️ Status")
-    
-    if GEMINI_API_KEY:
-        st.success("✅ API ključ je učitan iz .env fajla")
-    else:
-        st.error("❌ API ključ nije pronađen!")
-        st.info("Proverite da li postoji .env fajl sa GEMINI_API_KEY")
-    
-    st.markdown("---")
-    st.markdown("### 📋 Instrukcije")
+    st.markdown("### 📋 Instructions")
     st.markdown("""
-    1. Uploadujte CSV fajl
-    2. Odaberite kolone sa pitanjima i odgovorima
-    3. Kliknite na 'Generiši Sitemapu'
+    1. Upload CSV file
+    2. Select columns with questions and answers
+    3. Click on 'Generate Sitemap'
     """)
 
-# Funkcija za parsiranje CSV-a
+# Function for parsing CSV
 def parse_csv(file) -> pd.DataFrame:
-    """Učitava CSV fajl i vraća DataFrame sa boljim error handling-om"""
+    """Loads CSV file and returns DataFrame with better error handling"""
     
-    # Resetuj poziciju fajla na početak
+    # Reset file position to beginning
     file.seek(0)
     
-    # Proveri da li je fajl prazan i pronađi header red
+    # Check if file is empty and find header row
     try:
         content = file.read()
-        # Ako je content bytes, dekodiraj ga
+        # If content is bytes, decode it
         if isinstance(content, bytes):
             try:
                 content = content.decode('utf-8')
@@ -74,50 +65,50 @@ def parse_csv(file) -> pd.DataFrame:
                     content = content.decode('utf-8', errors='ignore')
         
         if not content or len(content.strip()) == 0:
-            raise ValueError("CSV fajl je prazan! Molimo uploadujte fajl sa podacima.")
+            raise ValueError("CSV file is empty! Please upload a file with data.")
         
-        # Pronađi header red (red koji sadrži "Section" ili "Question" ili "Answer")
+        # Find header row (row containing "Section" or "Question" or "Answer")
         lines = content.split('\n')
         header_row_index = None
         
         for i, line in enumerate(lines):
             line_lower = line.lower().strip()
-            # Traži header red koji sadrži tipične kolone za questionnaire CSV
+            # Search for header row containing typical columns for questionnaire CSV
             if any(keyword in line_lower for keyword in ['section', 'question', 'answer']):
-                # Proveri da li ima više od jedne kolone (da nije samo metadata red)
+                # Check if it has more than one column (not just a metadata row)
                 if ',' in line and line.count(',') >= 2:
                     header_row_index = i
                     break
         
         if header_row_index is None:
-            # Ako nije pronađen specifičan header, pokušaj da nađeš bilo koji red sa više kolona
+            # If specific header not found, try to find any row with multiple columns
             for i, line in enumerate(lines):
                 if ',' in line and line.count(',') >= 2:
                     header_row_index = i
                     break
         
         if header_row_index is None:
-            # Ako nije pronađen specifičan header, pokušaj da parsiraš od početka
-            # Možda je fajl standardni CSV bez metadata redova
+            # If specific header not found, try to parse from the beginning
+            # Maybe the file is a standard CSV without metadata rows
             header_row_index = 0
         
-        # Proveri da li ima podatke posle header reda (ako header nije na početku)
+        # Check if there is data after header row (if header is not at the beginning)
         if header_row_index > 0:
             data_lines = [line.strip() for line in lines[header_row_index + 1:] if line.strip()]
             if len(data_lines) < 1:
-                raise ValueError("CSV fajl nema podatke posle header reda! Proverite da li fajl sadrži podatke.")
+                raise ValueError("CSV file has no data after header row! Please check if the file contains data.")
         
     except Exception as e:
-        if "prazan" in str(e).lower() or "nema podatke" in str(e).lower():
+        if "empty" in str(e).lower() or "no data" in str(e).lower():
             raise
-        # Ako greška nije vezana za prazan fajl, nastavi dalje sa header_row_index = 0
+        # If error is not related to empty file, continue with header_row_index = 0
         if 'header_row_index' not in locals():
             header_row_index = 0
     
-    # Resetuj poziciju ponovo
+    # Reset position again
     file.seek(0)
     
-    # Lista opcija za parsiranje (različiti delimiteri i encoding-i)
+    # List of parsing options (different delimiters and encodings)
     parse_options = [
         {'encoding': 'utf-8', 'delimiter': ','},
         {'encoding': 'utf-8', 'delimiter': ';'},
@@ -133,14 +124,14 @@ def parse_csv(file) -> pd.DataFrame:
     
     for i, options in enumerate(parse_options):
         try:
-            file.seek(0)  # Resetuj poziciju za svaki pokušaj
+            file.seek(0)  # Reset position for each attempt
             
-            # Koristi header_row_index ako je pronađen, inače pokušaj automatski
+            # Use header_row_index if found, otherwise try automatically
             skip_rows = header_row_index if header_row_index is not None else 0
             
-            # Pokušaj sa različitim opcijama zavisno od verzije pandas-a
+            # Try with different options depending on pandas version
             try:
-                # Najnovija verzija pandas-a
+                # Latest pandas version
                 df = pd.read_csv(
                     file,
                     encoding=options['encoding'],
@@ -151,7 +142,7 @@ def parse_csv(file) -> pd.DataFrame:
                 )
             except TypeError:
                 try:
-                    # Srednja verzija pandas-a
+                    # Middle pandas version
                     df = pd.read_csv(
                         file,
                         encoding=options['encoding'],
@@ -162,7 +153,7 @@ def parse_csv(file) -> pd.DataFrame:
                         engine='python'
                     )
                 except TypeError:
-                    # Najstarija verzija - bez opcija za loše linije
+                    # Oldest version - without bad lines options
                     df = pd.read_csv(
                         file,
                         encoding=options['encoding'],
@@ -171,19 +162,19 @@ def parse_csv(file) -> pd.DataFrame:
                         engine='python'
                     )
             
-            # Proveri da li ima kolone
+            # Check if it has columns
             if df.empty and len(df.columns) == 0:
                 continue
                 
-            # Proveri da li ima podatke
+            # Check if it has data
             if len(df.columns) == 0:
-                raise ValueError("CSV fajl nema kolone! Proverite format fajla.")
+                raise ValueError("CSV file has no columns! Please check the file format.")
             
-            # Ako je DataFrame prazan ali ima kolone, to je OK (možda nema podataka)
+            # If DataFrame is empty but has columns, that's OK (maybe no data)
             return df
             
         except pd.errors.EmptyDataError:
-            raise ValueError("CSV fajl je prazan ili nema podataka! Proverite da li fajl sadrži podatke.")
+            raise ValueError("CSV file is empty or has no data! Please check if the file contains data.")
         except UnicodeDecodeError as e:
             last_error = e
             continue
@@ -191,7 +182,7 @@ def parse_csv(file) -> pd.DataFrame:
             last_error = e
             continue
     
-    # Ako ništa ne radi, pokušaj sa automatskim detekcijom
+    # If nothing works, try with automatic detection
     try:
         file.seek(0)
         df = pd.read_csv(file, sep=None, engine='python', on_bad_lines='skip')
@@ -200,20 +191,20 @@ def parse_csv(file) -> pd.DataFrame:
     except:
         pass
     
-    # Ako sve ne uspe, baci grešku sa detaljima
-    error_msg = "Ne mogu da parsujem CSV fajl. "
+    # If everything fails, throw error with details
+    error_msg = "Cannot parse CSV file. "
     if last_error:
-        error_msg += f"Poslednja greška: {str(last_error)}. "
-    error_msg += "Proverite da li je fajl validan CSV format sa kolonama i podacima."
+        error_msg += f"Last error: {str(last_error)}. "
+    error_msg += "Please check if the file is a valid CSV format with columns and data."
     raise ValueError(error_msg)
 
-# Funkcija za parsiranje XML sitemape
+# Function for parsing XML sitemap
 def parse_sitemap_xml(xml_content: str) -> List[Dict]:
-    """Parsira XML sitemapu i vraća listu URL-ova sa metapodacima"""
+    """Parses XML sitemap and returns list of URLs with metadata"""
     urls = []
     
     try:
-        # Pokušaj sa BeautifulSoup (bolje rukovanje sa lošim XML-om)
+        # Try with BeautifulSoup (better handling of bad XML)
         soup = BeautifulSoup(xml_content, 'xml')
         url_elements = soup.find_all('url')
         
@@ -255,7 +246,7 @@ def parse_sitemap_xml(xml_content: str) -> List[Dict]:
                         url_data['priority'] = priority.text.strip() if priority.text else ''
                     urls.append(url_data)
         except:
-            # Ako ništa ne radi, pokušaj regex
+            # If nothing works, try regex
             url_pattern = r'<loc>(.*?)</loc>'
             matches = re.findall(url_pattern, xml_content)
             for match in matches:
@@ -268,12 +259,12 @@ def parse_sitemap_xml(xml_content: str) -> List[Dict]:
     
     return urls
 
-# Funkcija za kreiranje vizuelnog grafa
+# Function for creating visual graph
 def create_visual_graph(urls: List[Dict]) -> str:
-    """Kreira interaktivni graf sitemape koristeći pyvis"""
+    """Creates interactive sitemap graph using pyvis"""
     net = Network(height='600px', width='100%', bgcolor='#222222', font_color='white', directed=True)
     
-    # Dodaj čvorove i veze
+    # Add nodes and edges
     nodes = {}
     
     for url_data in urls:
@@ -281,18 +272,18 @@ def create_visual_graph(urls: List[Dict]) -> str:
         parsed = urlparse(url)
         path_parts = [p for p in parsed.path.split('/') if p]
         
-        # Dodaj root domen
+        # Add root domain
         domain = parsed.netloc or 'root'
         if domain not in nodes:
             net.add_node(domain, label=domain, color='#FF6B6B', size=30, title=domain, shape='box')
             nodes[domain] = domain
         
-        # Dodaj čvorove za svaki deo putanje
+        # Add nodes for each path part
         current_path = domain
         for i, part in enumerate(path_parts):
             node_id = f"{current_path}/{part}"
             if node_id not in nodes:
-                # Boja zavisi od nivoa
+                # Color depends on level
                 if i == 0:
                     color = '#4ECDC4'
                     size = 25
@@ -306,7 +297,7 @@ def create_visual_graph(urls: List[Dict]) -> str:
                     size = 15
                     shape = 'dot'
                 
-                # Skrati label ako je previše dug
+                # Shorten label if too long
                 label = part[:20] + '...' if len(part) > 20 else part
                 
                 net.add_node(
@@ -319,13 +310,13 @@ def create_visual_graph(urls: List[Dict]) -> str:
                 )
                 nodes[node_id] = node_id
                 
-                # Dodaj vezu samo ako već ne postoji
+                # Add edge only if it doesn't already exist
                 if current_path != node_id:
                     net.add_edge(current_path, node_id, arrows='to', color='#888888')
             
             current_path = node_id
     
-    # Generiši HTML sa boljim opcijama
+    # Generate HTML with better options
     net.set_options("""
     {
       "physics": {
@@ -348,9 +339,9 @@ def create_visual_graph(urls: List[Dict]) -> str:
     
     return net.generate_html()
 
-# Funkcija za kreiranje folder tree strukture
+# Function for creating folder tree structure
 def create_folder_tree(urls: List[Dict]) -> str:
-    """Kreira folder tree strukturu kao string"""
+    """Creates folder tree structure as string"""
     tree = {}
     
     for url_data in urls:
@@ -364,13 +355,13 @@ def create_folder_tree(urls: List[Dict]) -> str:
                 current[part] = {}
             current = current[part]
     
-    # Kreiraj tree string
+    # Create tree string
     tree_lines = []
     tree_lines.append("📁 /")
     
     def print_tree(node, prefix="", is_last=True, depth=0):
-        """Rekurzivno štampa tree strukturu"""
-        if depth > 6:  # Ograniči dubinu
+        """Recursively prints tree structure"""
+        if depth > 6:  # Limit depth
             return
         
         if isinstance(node, dict):
@@ -379,7 +370,7 @@ def create_folder_tree(urls: List[Dict]) -> str:
                 is_last_item = i == len(items) - 1
                 connector = "└── " if is_last_item else "├── "
                 
-                # Dodaj ikonicu zavisno od toga da li ima decu
+                # Add icon depending on whether it has children
                 icon = "📁" if isinstance(value, dict) and value else "📄"
                 tree_lines.append(prefix + connector + icon + " " + key)
                 
@@ -391,9 +382,9 @@ def create_folder_tree(urls: List[Dict]) -> str:
     
     return "\n".join(tree_lines)
 
-# Funkcija za izdvajanje pitanja i odgovora
+# Function for extracting questions and answers
 def extract_qa_pairs(df: pd.DataFrame, question_col: str, answer_col: str) -> List[Dict]:
-    """Izdvaja parove pitanja-odgovor iz DataFrame-a"""
+    """Extracts question-answer pairs from DataFrame"""
     qa_pairs = []
     
     for idx, row in df.iterrows():
@@ -409,38 +400,38 @@ def extract_qa_pairs(df: pd.DataFrame, question_col: str, answer_col: str) -> Li
     
     return qa_pairs
 
-# Funkcija za analizu sa Gemini AI-jem
+# Function for analysis with Gemini AI
 def analyze_with_gemini(qa_pairs: List[Dict]) -> str:
-    """Analizira pitanja i odgovore pomoću Gemini AI-ja i generiše sitemapu"""
+    """Analyzes questions and answers using Gemini AI and generates sitemap"""
     
     if not GEMINI_API_KEY:
-        raise ValueError("API ključ nije pronađen u .env fajlu")
+        raise ValueError("API key not found in .env file")
     
-    # Priprema prompta
+    # Prepare prompt
     qa_text = "\n\n".join([
-        f"Pitanje {pair['id']}: {pair['question']}\nOdgovor: {pair['answer']}"
-        for pair in qa_pairs[:50]  # Ograničavamo na prva 50 zbog token limita
+        f"Question {pair['id']}: {pair['question']}\nAnswer: {pair['answer']}"
+        for pair in qa_pairs[:50]  # Limit to first 50 due to token limit
     ])
     
     if len(qa_pairs) > 50:
-        qa_text += f"\n\n... i još {len(qa_pairs) - 50} parova pitanja-odgovor."
+        qa_text += f"\n\n... and {len(qa_pairs) - 50} more question-answer pairs."
     
-    prompt = f"""Analiziraj sledeća pitanja i odgovore i generiši detaljnu sitemapu u XML formatu.
+    prompt = f"""Analyze the following questions and answers and generate a detailed sitemap in XML format.
 
-Pitanja i odgovori:
+Questions and answers:
 {qa_text}
 
-Generiši sitemapu koja:
-1. Organizuje sadržaj u logičke kategorije i sekcije bazirane na temama iz pitanja
-2. Kreira URL strukturu koja odražava hijerarhiju sadržaja (npr. /kategorija/podkategorija/stranica)
-3. Uključuje sve relevantne stranice bazirane na temama iz pitanja i odgovora
-4. Koristi standardni XML sitemap format
+Generate a sitemap that:
+1. Organizes content into logical categories and sections based on topics from questions
+2. Creates URL structure that reflects content hierarchy (e.g. /category/subcategory/page)
+3. Includes all relevant pages based on topics from questions and answers
+4. Uses standard XML sitemap format
 
-Format sitemape MORA biti validan XML:
+The sitemap format MUST be valid XML:
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://example.com/kategorija/stranica</loc>
+    <loc>https://example.com/category/page</loc>
     <lastmod>2024-01-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -448,217 +439,217 @@ Format sitemape MORA biti validan XML:
   ...
 </urlset>
 
-Važno:
-- Koristi samo validan XML format
-- Svaki <url> element mora imati <loc>, <lastmod>, <changefreq>, i <priority>
-- URL-ovi treba da budu smisleni i organizovani po kategorijama
+Important:
+- Use only valid XML format
+- Each <url> element must have <loc>, <lastmod>, <changefreq>, and <priority>
+- URLs should be meaningful and organized by categories
 - <lastmod> format: YYYY-MM-DD
-- <changefreq> vrednosti: always, hourly, daily, weekly, monthly, yearly, never
-- <priority> vrednosti: 0.0 do 1.0
+- <changefreq> values: always, hourly, daily, weekly, monthly, yearly, never
+- <priority> values: 0.0 to 1.0
 
-Generiši kompletnu sitemapu sa svim relevantnim stranicama:"""
+Generate complete sitemap with all relevant pages:"""
 
     try:
-        # Pokušaj sa Gemini 2.5 Flash (najnoviji model)
-        # Prvo pokušaj sa gemini-2.0-flash-exp (eksperimentalni, najnoviji)
+        # Try with Gemini 2.5 Flash (latest model)
+        # First try with gemini-2.0-flash-exp (experimental, latest)
         try:
             model = genai.GenerativeModel('gemini-2.0-flash-exp')
             response = model.generate_content(prompt)
             return response.text
         except:
-            # Fallback na gemini-1.5-flash ako 2.0 ne radi
+            # Fallback to gemini-1.5-flash if 2.0 doesn't work
             model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(prompt)
             return response.text
     except Exception as e:
-        # Fallback na alternativne modele
+        # Fallback to alternative models
         try:
             model = genai.GenerativeModel('gemini-pro')
             response = model.generate_content(prompt)
             return response.text
         except:
-            raise Exception(f"Greška pri komunikaciji sa Gemini AI: {str(e)}")
+            raise Exception(f"Error communicating with Gemini AI: {str(e)}")
 
-# Glavni deo aplikacije
+# Main part of application
 uploaded_file = st.file_uploader(
-    "Uploaduj CSV fajl",
+    "Upload CSV file",
     type=['csv'],
-    help="Izaberite CSV fajl koji sadrži pitanja i odgovore"
+    help="Select a CSV file that contains questions and answers"
 )
 
 if uploaded_file is not None:
-    # Prikaži info o fajlu
-    st.info(f"📄 Fajl: **{uploaded_file.name}** ({uploaded_file.size} bytes)")
+    # Show file info
+    st.info(f"📄 File: **{uploaded_file.name}** ({uploaded_file.size} bytes)")
     
-    # Parsiranje CSV-a sa error handling-om
+    # Parse CSV with error handling
     try:
         df = parse_csv(uploaded_file)
         
         if df.empty:
-            st.warning("⚠️ CSV fajl je učitan ali je prazan (nema redova sa podacima).")
+            st.warning("⚠️ CSV file is loaded but empty (no rows with data).")
         else:
-            st.success(f"✅ CSV fajl je učitan! Ukupno redova: {len(df)}")
+            st.success(f"✅ CSV file loaded! Total rows: {len(df)}")
     except Exception as e:
-        st.error(f"❌ Greška pri učitavanju CSV fajla: {str(e)}")
+        st.error(f"❌ Error loading CSV file: {str(e)}")
         
-        # Debug informacije
-        with st.expander("🔍 Debug informacije", expanded=False):
-            st.write("**Tip greške:**", type(e).__name__)
-            st.write("**Detalji:**", str(e))
-            st.info("💡 **Savet:** Proverite da li je fajl validan CSV format sa kolonama i podacima. Otvorite fajl u text editoru i proverite format.")
+        # Debug information
+        with st.expander("🔍 Debug Information", expanded=False):
+            st.write("**Error type:**", type(e).__name__)
+            st.write("**Details:**", str(e))
+            st.info("💡 **Tip:** Please check if the file is a valid CSV format with columns and data. Open the file in a text editor and check the format.")
         
-        st.stop()  # Zaustavi izvršavanje ako fajl ne može da se učita
+        st.stop()  # Stop execution if file cannot be loaded
     
-    # Prikaz prvih redova
-    with st.expander("📊 Pregled podataka", expanded=False):
+    # Display first rows
+    with st.expander("📊 Data Preview", expanded=False):
         st.dataframe(df.head(10))
-        st.info(f"Ukupno kolona: {len(df.columns)}")
-        st.write("Kolone:", list(df.columns))
+        st.info(f"Total columns: {len(df.columns)}")
+        st.write("Columns:", list(df.columns))
     
-    # Izbor kolona
-    st.subheader("🔍 Izaberite kolone")
+    # Column selection
+    st.subheader("🔍 Select Columns")
     
     col1, col2 = st.columns(2)
     
     with col1:
         question_column = st.selectbox(
-            "Kolona sa pitanjima:",
+            "Question column:",
             options=df.columns.tolist(),
-            help="Izaberite kolonu koja sadrži pitanja"
+            help="Select the column that contains questions"
         )
     
     with col2:
         answer_column = st.selectbox(
-            "Kolona sa odgovorima:",
+            "Answer column:",
             options=df.columns.tolist(),
-            help="Izaberite kolonu koja sadrži odgovore"
+            help="Select the column that contains answers"
         )
     
-    # Dugme za generisanje
-    if st.button("🚀 Generiši Sitemapu", type="primary", use_container_width=True):
+    # Generate button
+    if st.button("🚀 Generate Sitemap", type="primary", use_container_width=True):
         if not GEMINI_API_KEY:
-            st.error("❌ GEMINI_API_KEY nije pronađen u .env fajlu! Molimo proverite .env fajl.")
+            st.error("❌ GEMINI_API_KEY not found in .env file! Please check the .env file.")
         else:
-            with st.spinner("⏳ Analiziram pitanja i odgovore..."):
+            with st.spinner("⏳ Analyzing questions and answers..."):
                 try:
-                    # Izdvajanje QA parova
+                    # Extract QA pairs
                     qa_pairs = extract_qa_pairs(df, question_column, answer_column)
                     
                     if not qa_pairs:
-                        st.warning("⚠️ Nisu pronađeni validni parovi pitanja-odgovor!")
+                        st.warning("⚠️ No valid question-answer pairs found!")
                     else:
-                        st.info(f"📝 Pronađeno {len(qa_pairs)} parova pitanja-odgovor")
+                        st.info(f"📝 Found {len(qa_pairs)} question-answer pairs")
                         
-                        # Analiza sa Gemini AI-jem
+                        # Analysis with Gemini AI
                         progress_bar = st.progress(0)
                         status_text = st.empty()
                         
-                        status_text.text("🤖 Komuniciram sa Gemini AI-jem...")
+                        status_text.text("🤖 Communicating with Gemini AI...")
                         progress_bar.progress(30)
                         
                         sitemap = analyze_with_gemini(qa_pairs)
                         
                         progress_bar.progress(100)
-                        status_text.text("✅ Sitemapa je generisana!")
+                        status_text.text("✅ Sitemap generated!")
                         
-                        # Prikaz rezultata
-                        st.success("✅ Sitemapa je uspešno generisana!")
+                        # Display results
+                        st.success("✅ Sitemap successfully generated!")
                         
-                        # Parsiraj sitemapu za vizuelizaciju
+                        # Parse sitemap for visualization
                         parsed_urls = parse_sitemap_xml(sitemap)
                         
-                        # Tabs za prikaz rezultata
-                        tab1, tab2, tab3, tab4 = st.tabs(["📄 XML Sitemapa", "🗺️ Vizuelna Sitemapa", "📁 Struktura", "📊 Statistika"])
+                        # Tabs for displaying results
+                        tab1, tab2, tab3, tab4 = st.tabs(["📄 XML Sitemap", "🗺️ Visual Sitemap", "📁 Structure", "📊 Statistics"])
                         
                         with tab1:
-                            st.subheader("Generisana XML Sitemapa")
+                            st.subheader("Generated XML Sitemap")
                             st.code(sitemap, language="xml")
                             
-                            # Download dugme
+                            # Download button
                             st.download_button(
-                                label="💾 Download Sitemape",
+                                label="💾 Download Sitemap",
                                 data=sitemap,
                                 file_name=f"sitemap_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml",
                                 mime="application/xml"
                             )
                         
                         with tab2:
-                            st.subheader("🗺️ Vizuelna Sitemapa - Graf Veza")
+                            st.subheader("🗺️ Visual Sitemap - Connection Graph")
                             if parsed_urls:
-                                st.info(f"📊 Prikazano {len(parsed_urls)} stranica u grafu")
+                                st.info(f"📊 Displaying {len(parsed_urls)} pages in graph")
                                 
-                                # Kreiraj vizuelni graf
+                                # Create visual graph
                                 try:
                                     graph_html = create_visual_graph(parsed_urls)
                                     st.components.v1.html(graph_html, height=600, scrolling=True)
                                 except Exception as e:
-                                    st.error(f"Greška pri kreiranju grafa: {str(e)}")
-                                    st.info("Pokušavam alternativni prikaz...")
+                                    st.error(f"Error creating graph: {str(e)}")
+                                    st.info("Trying alternative display...")
                                     
-                                    # Alternativni prikaz - lista sa hijerarhijom
-                                    st.markdown("### 📋 Hijerarhija stranica:")
-                                    for url_data in parsed_urls[:20]:  # Prikaži prvih 20
+                                    # Alternative display - list with hierarchy
+                                    st.markdown("### 📋 Page Hierarchy:")
+                                    for url_data in parsed_urls[:20]:  # Show first 20
                                         url = url_data['url']
                                         parsed = urlparse(url)
                                         path_parts = [p for p in parsed.path.split('/') if p]
                                         indent = "  " * len(path_parts)
                                         st.markdown(f"{indent}📄 `{path_parts[-1] if path_parts else '/'}`")
                             else:
-                                st.warning("⚠️ Nije moguće parsirati sitemapu za vizuelizaciju.")
+                                st.warning("⚠️ Cannot parse sitemap for visualization.")
                         
                         with tab3:
-                            st.subheader("📁 Struktura Aplikacije")
+                            st.subheader("📁 Application Structure")
                             if parsed_urls:
-                                st.info(f"📊 Prikazano {len(parsed_urls)} stranica u strukturi")
+                                st.info(f"📊 Displaying {len(parsed_urls)} pages in structure")
                                 
-                                # Kreiraj folder tree
+                                # Create folder tree
                                 try:
                                     tree_structure = create_folder_tree(parsed_urls)
                                     st.code(tree_structure, language="text")
                                     
-                                    # Download tree strukture
+                                    # Download tree structure
                                     st.download_button(
-                                        label="💾 Download Strukture",
+                                        label="💾 Download Structure",
                                         data=tree_structure,
                                         file_name=f"sitemap_structure_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                                         mime="text/plain"
                                     )
                                 except Exception as e:
-                                    st.error(f"Greška pri kreiranju strukture: {str(e)}")
+                                    st.error(f"Error creating structure: {str(e)}")
                                     
-                                    # Alternativni prikaz
-                                    st.markdown("### 📋 Lista URL-ova:")
+                                    # Alternative display
+                                    st.markdown("### 📋 URL List:")
                                     for url_data in parsed_urls:
                                         st.markdown(f"- `{url_data['url']}`")
                             else:
-                                st.warning("⚠️ Nije moguće parsirati sitemapu za strukturu.")
+                                st.warning("⚠️ Cannot parse sitemap for structure.")
                         
                         with tab4:
-                            st.subheader("Statistika")
+                            st.subheader("Statistics")
                             col1, col2, col3 = st.columns(3)
                             
                             with col1:
-                                st.metric("Ukupno pitanja", len(qa_pairs))
+                                st.metric("Total Questions", len(qa_pairs))
                             with col2:
-                                st.metric("Ukupno stranica", len(parsed_urls) if parsed_urls else 0)
+                                st.metric("Total Pages", len(parsed_urls) if parsed_urls else 0)
                             with col3:
-                                st.metric("Ukupno redova u CSV-u", len(df))
+                                st.metric("Total CSV Rows", len(df))
                             
-                            st.metric("Kolone u CSV-u", len(df.columns))
+                            st.metric("CSV Columns", len(df.columns))
                             
-                            # Prikaz prvih nekoliko QA parova
-                            st.subheader("Primeri pitanja i odgovora")
+                            # Display first few QA pairs
+                            st.subheader("Sample Questions and Answers")
                             for i, pair in enumerate(qa_pairs[:5], 1):
-                                with st.expander(f"Pitanje {pair['id']}"):
-                                    st.write("**Pitanje:**", pair['question'])
-                                    st.write("**Odgovor:**", pair['answer'][:200] + "..." if len(pair['answer']) > 200 else pair['answer'])
+                                with st.expander(f"Question {pair['id']}"):
+                                    st.write("**Question:**", pair['question'])
+                                    st.write("**Answer:**", pair['answer'][:200] + "..." if len(pair['answer']) > 200 else pair['answer'])
                 
                 except Exception as e:
-                    st.error(f"❌ Greška: {str(e)}")
+                    st.error(f"❌ Error: {str(e)}")
                     st.exception(e)
 
 else:
-    st.info("👆 Molimo uploadujte CSV fajl da biste počeli")
+    st.info("👆 Please upload a CSV file to get started")
 
 # Footer
 st.markdown("---")
