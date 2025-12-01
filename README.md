@@ -77,6 +77,37 @@ id,question,answer,category,other_info
 2,"Kako se koristi?","Koristi se za...",programming,info2
 ```
 
+## ☁️ Deploy na Render
+
+Aplikacija je spremna za deploy na Render! Slede ove korake:
+
+### Korak 1: Push na GitHub
+```bash
+git add .
+git commit -m "Ready for deployment"
+git push
+```
+
+### Korak 2: Konektuj GitHub repo na Render
+1. Idite na [Render Dashboard](https://dashboard.render.com/)
+2. Kliknite na **"New +"** → **"Web Service"**
+3. Konektujte GitHub nalog i izaberite repozitorijum `SD-Sitemap`
+4. Render će automatski detektovati konfiguraciju iz `Procfile` i `render.yaml`
+
+### Korak 3: Dodaj Environment Variable
+1. U Render Dashboard-u, idite na **"Environment"** sekciju
+2. Dodajte novu env varijablu:
+   - **Key:** `GEMINI_API_KEY`
+   - **Value:** Vaš Gemini API ključ
+3. Kliknite **"Save Changes"**
+
+### Korak 4: Deploy
+- Render će automatski pokrenuti build i deploy
+- Sačekajte da se deploy završi (obično 2-5 minuta)
+- Vaša aplikacija će biti dostupna na Render URL-u
+
+**⚠️ VAŽNO:** Na Render-u koristite **Environment Variables**, ne `.env` fajl!
+
 ## 🛠️ Tehnologije
 
 - **Streamlit** - Web aplikacija
