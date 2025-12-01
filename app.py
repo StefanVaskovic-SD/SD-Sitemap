@@ -259,10 +259,12 @@ def parse_sitemap_xml(xml_content: str) -> List[Dict]:
     
     return urls
 
-# Function for creating visual tree HTML
+# Function for creating visual tree HTML with nodes and connections
 def create_visual_tree_html(urls: List[Dict]) -> str:
-    """Creates HTML tree visualization of sitemap"""
+    """Creates visual node-based tree visualization of sitemap"""
+    # Build tree structure
     tree = {}
+    node_info = {}  # Store node metadata
     
     for url_data in urls:
         url = url_data['url']
@@ -270,82 +272,242 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
         path_parts = [p for p in parsed.path.split('/') if p]
         
         current = tree
+        current_path = []
         for part in path_parts:
+            current_path.append(part)
+            path_key = '/'.join(current_path)
             if part not in current:
                 current[part] = {}
+                node_info[path_key] = {
+                    'name': part,
+                    'path': path_key,
+                    'depth': len(current_path),
+                    'has_children': False
+                }
             current = current[part]
+            if path_key in node_info:
+                node_info[path_key]['has_children'] = len(current) > 0
     
-    # Generate HTML tree
+    # Build hierarchical structure for rendering
+    all_nodes = {}
+    connections = []
+    
+    def traverse_tree(node, parent_path="", parent_id=None, depth=0):
+        if depth > 4:  # Limit depth for visualization
+            return []
+        
+        level_nodes = []
+        items = list(node.items())
+        
+        for i, (key, value) in enumerate(items):
+            node_path = f"{parent_path}/{key}" if parent_path else key
+            # Create unique ID
+            node_id = f"node_{depth}_{i}_{key.replace('/', '_').replace(' ', '_')}"
+            
+            is_folder = isinstance(value, dict) and len(value) > 0
+            
+            node_data = {
+                'id': node_id,
+                'name': key,
+                'path': node_path,
+                'depth': depth,
+                'is_folder': is_folder,
+                'parent_id': parent_id,
+                'children': []
+            }
+            
+            all_nodes[node_id] = node_data
+            
+            if parent_id:
+                connections.append({
+                    'from': parent_id,
+                    'to': node_id
+                })
+            
+            if is_folder:
+                children = traverse_tree(value, node_path, node_id, depth + 1)
+                node_data['children'] = children
+            
+            level_nodes.append(node_data)
+        
+        return level_nodes
+    
+    root_nodes = traverse_tree(tree, "", "root", 0)
+    
+    # Generate HTML with SVG for connections
     html_parts = []
     html_parts.append("""
     <style>
-        .sitemap-tree {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 14px;
-            line-height: 1.8;
+        .sitemap-visual {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background: #1e1e1e;
             color: #d4d4d4;
-            padding: 20px;
+            padding: 30px;
             border-radius: 8px;
-            overflow-x: auto;
-            min-height: 500px;
+            min-height: 600px;
+            position: relative;
+            overflow: auto;
         }
-        .tree-item {
-            margin: 1px 0;
-            white-space: nowrap;
+        .sitemap-container {
+            position: relative;
+            min-width: 100%;
+            padding: 20px 0;
         }
-        .tree-folder {
-            color: #4ECDC4;
-            font-weight: 600;
+        .sitemap-level {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 40px 0;
+            position: relative;
         }
-        .tree-file {
-            color: #95E1D3;
+        .sitemap-node {
+            position: relative;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: #000;
+            min-width: 120px;
+            max-width: 200px;
+            word-wrap: break-word;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .tree-connector {
-            color: #666;
-            margin-right: 4px;
-            font-family: monospace;
+        .sitemap-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
         }
-        .tree-root {
-            color: #FF6B6B;
-            font-weight: bold;
+        .node-root {
+            background: #ff6b9d;
+            color: #fff;
+            font-weight: 700;
             font-size: 16px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
+        }
+        .node-level-0 {
+            background: #ffa94d;
+            color: #000;
+        }
+        .node-level-1 {
+            background: #74c0fc;
+            color: #000;
+        }
+        .node-level-2 {
+            background: #adb5bd;
+            color: #000;
+        }
+        .node-level-3 {
+            background: #868e96;
+            color: #fff;
+        }
+        .connection-line {
+            stroke: #495057;
+            stroke-width: 2;
+            fill: none;
+        }
+        .svg-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sitemap-level {
+            z-index: 1;
+            position: relative;
         }
     </style>
-    <div class="sitemap-tree">
+    <div class="sitemap-visual">
+        <div class="sitemap-container" id="sitemapContainer">
     """)
     
-    html_parts.append('<div class="tree-root">📁 /</div>')
-    
-    def build_tree_html(node, prefix="", is_last=True, depth=0):
-        if depth > 6:  # Limit depth
+    # Render nodes by level
+    def render_level(nodes, level=0):
+        if not nodes:
             return
         
-        if isinstance(node, dict):
-            items = list(node.items())
-            for i, (key, value) in enumerate(items):
-                is_last_item = i == len(items) - 1
-                connector = "└── " if is_last_item else "├── "
-                
-                # Check if it's a folder or file
-                if isinstance(value, dict) and value:
-                    icon = "📁"
-                    css_class = "tree-folder"
-                else:
-                    icon = "📄"
-                    css_class = "tree-file"
-                
-                html_parts.append(f'<div class="tree-item"><span class="tree-connector">{prefix}{connector}</span><span class="{css_class}">{icon} {key}</span></div>')
-                
-                if isinstance(value, dict) and value:
-                    extension = "    " if is_last_item else "│   "
-                    build_tree_html(value, prefix + extension, is_last_item, depth + 1)
+        html_parts.append(f'<div class="sitemap-level" data-level="{level}">')
+        
+        for node in nodes:
+            node_class = "node-root" if level == -1 else f"node-level-{min(level, 3)}"
+            html_parts.append(f'<div class="sitemap-node {node_class}" id="{node["id"]}" data-name="{node["name"]}">{node["name"]}</div>')
+        
+        html_parts.append('</div>')
+        
+        # Render children
+        for node in nodes:
+            if node['children']:
+                render_level(node['children'], level + 1)
     
-    build_tree_html(tree)
+    # Add root node
+    html_parts.append('<div class="sitemap-level" data-level="-1">')
+    html_parts.append('<div class="sitemap-node node-root" id="root" data-name="Homepage">Homepage</div>')
     html_parts.append('</div>')
+    
+    # Render all levels
+    render_level(root_nodes, 0)
+    
+    # Add SVG for connections
+    html_parts.append('<svg class="svg-connections" id="connectionsSvg"></svg>')
+    html_parts.append('</div></div>')
+    
+    # Convert connections to JSON for JavaScript
+    connections_json = json.dumps(connections)
+    
+    # JavaScript to draw connections
+    html_parts.append(f"""
+    <script>
+        function drawConnections() {{
+            const svg = document.getElementById('connectionsSvg');
+            const container = document.getElementById('sitemapContainer');
+            const connections = {connections_json};
+            
+            if (!svg || !container) return;
+            
+            // Clear existing lines
+            svg.innerHTML = '';
+            
+            // Set SVG size
+            const containerRect = container.getBoundingClientRect();
+            svg.setAttribute('width', containerRect.width);
+            svg.setAttribute('height', containerRect.height);
+            
+            connections.forEach(conn => {{
+                const fromNode = document.getElementById(conn.from);
+                const toNode = document.getElementById(conn.to);
+                
+                if (fromNode && toNode) {{
+                    const fromRect = fromNode.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    const toRect = toNode.getBoundingClientRect();
+                    
+                    const fromX = fromRect.left + fromRect.width / 2 - containerRect.left;
+                    const fromY = fromRect.bottom - containerRect.top;
+                    const toX = toRect.left + toRect.width / 2 - containerRect.left;
+                    const toY = toRect.top - containerRect.top;
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const midY = (fromY + toY) / 2;
+                    const path = `M ${{fromX}} ${{fromY}} L ${{fromX}} ${{midY}} L ${{toX}} ${{midY}} L ${{toX}} ${{toY}}`;
+                    line.setAttribute('d', path);
+                    line.setAttribute('class', 'connection-line');
+                    svg.appendChild(line);
+                }}
+            }});
+        }}
+        
+        // Draw connections after page load
+        setTimeout(drawConnections, 200);
+        window.addEventListener('resize', drawConnections);
+        
+        // Also draw after a short delay to ensure layout is complete
+        setTimeout(drawConnections, 500);
+    </script>
+    """)
     
     return ''.join(html_parts)
 
@@ -439,12 +601,32 @@ CRITICAL INSTRUCTIONS:
 Questions and answers from client questionnaire:
 {qa_text}
 
-Based on this questionnaire, generate a WEBSITE SITEMAP with ONLY the actual pages needed. Examples of GOOD pages:
+Based on this questionnaire, generate a WEBSITE SITEMAP with ONLY the actual pages needed. 
+
+IMPORTANT - Single Pages for Categories:
+If the questionnaire mentions content categories like news, blog, products, projects, properties, services, etc., you MUST include:
+1. The category listing page (e.g., /news, /blog, /products, /projects)
+2. A single/detail page template (e.g., /news/single-news, /blog/single-post, /products/single-product, /projects/single-project)
+
+This applies to ANY dynamic content category mentioned. Examples:
+- If "news" is mentioned → include /news AND /news/single-news
+- If "blog" is mentioned → include /blog AND /blog/single-post  
+- If "products" is mentioned → include /products AND /products/single-product
+- If "projects" is mentioned → include /projects AND /projects/single-project
+- If "properties" is mentioned → include /properties AND /properties/single-property
+- If "services" is mentioned → include /services AND /services/single-service
+
+Examples of GOOD pages:
 - /about-us
-- /properties (with subpages like /properties/apartments, /properties/chalets)
+- /properties (category listing)
+- /properties/apartments (subcategory)
+- /properties/single-property (single page template)
+- /news (category listing)
+- /news/single-news (single page template)
 - /contact
 - /privacy-policy
 - /blog (if blog is mentioned)
+- /blog/single-post (if blog is mentioned)
 
 Examples of BAD pages to avoid:
 - /multilingual-support (this is a feature, not a page)
@@ -461,7 +643,11 @@ Examples of BAD pages to avoid:
 - /competitor-seo (this is analysis, not a page)
 - /website-traffic (this is analytics, not a page)
 
-IMPORTANT: If the questionnaire mentions things like "what are your goals" or "what features do you need", these are PLANNING QUESTIONS, not actual pages. Only create pages for actual content sections like About, Services, Products, Contact, Blog, etc.
+IMPORTANT RULES:
+1. If the questionnaire mentions things like "what are your goals" or "what features do you need", these are PLANNING QUESTIONS, not actual pages. Only create pages for actual content sections.
+2. For ANY content category (news, blog, products, projects, properties, services, articles, events, etc.), always include BOTH the listing page AND a single/detail page template.
+3. Keep the sitemap practical and focused - typically 15-40 pages for most websites, depending on the complexity.
+4. Use clear, SEO-friendly URL structures (lowercase, hyphens, descriptive names).
 
 The sitemap format MUST be valid XML:
 <?xml version="1.0" encoding="UTF-8"?>
