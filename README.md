@@ -48,9 +48,9 @@ streamlit run app.py
 **API ključ se dodaje u `.env` fajl:**
 
 1. **Otvorite `.env` fajl** u folderu aplikacije
-2. **Zamenite** `your_api_key_here` sa vašim stvarnim API ključem:
+2. **Dodajte** vaš API ključ u formatu:
    ```
-   GEMINI_API_KEY=AIzaSyAbCdEfGhIjKlMnOpQrStUvWxYz1234567
+   GEMINI_API_KEY=your_api_key_here
    ```
 3. **Sačuvajte** fajl
 
