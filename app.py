@@ -8,8 +8,6 @@ from datetime import datetime
 from dotenv import load_dotenv
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
-import networkx as nx
-from pyvis.network import Network
 import re
 from urllib.parse import urlparse
 
