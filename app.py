@@ -348,44 +348,54 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
             min-height: 600px;
             position: relative;
             overflow: auto;
+            width: 100%;
         }
         .sitemap-container {
             position: relative;
             min-width: 100%;
-            padding: 20px 0;
+            min-height: 100%;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .sitemap-level {
             display: flex;
             justify-content: center;
             align-items: flex-start;
             flex-wrap: wrap;
-            gap: 20px;
-            margin: 40px 0;
+            gap: 15px;
+            margin: 30px 0;
             position: relative;
+            width: 100%;
+            min-width: fit-content;
         }
         .sitemap-node {
             position: relative;
-            padding: 12px 20px;
+            padding: 10px 18px;
             border-radius: 8px;
             text-align: center;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: #000;
-            min-width: 120px;
-            max-width: 200px;
+            color: #fff;
+            min-width: 100px;
+            max-width: 180px;
             word-wrap: break-word;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             transition: transform 0.2s, box-shadow 0.2s;
+            white-space: normal;
+            line-height: 1.3;
         }
         .sitemap-node:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            z-index: 10;
         }
         .node-root {
             background: #ff6b9d;
             color: #fff;
             font-weight: 700;
-            font-size: 16px;
+            font-size: 15px;
         }
         .node-level-0 {
             background: #ffa94d;
@@ -404,7 +414,7 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
             color: #fff;
         }
         .connection-line {
-            stroke: #495057;
+            stroke: #6c757d;
             stroke-width: 2;
             fill: none;
         }
@@ -472,10 +482,17 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
             // Clear existing lines
             svg.innerHTML = '';
             
-            // Set SVG size
+            // Get container dimensions - use scrollWidth/scrollHeight for full content size
+            const containerWidth = Math.max(container.scrollWidth, container.offsetWidth);
+            const containerHeight = Math.max(container.scrollHeight, container.offsetHeight);
+            
+            svg.setAttribute('width', containerWidth);
+            svg.setAttribute('height', containerHeight);
+            
+            // Get container's position relative to viewport
             const containerRect = container.getBoundingClientRect();
-            svg.setAttribute('width', containerRect.width);
-            svg.setAttribute('height', containerRect.height);
+            const scrollLeft = container.scrollLeft || 0;
+            const scrollTop = container.scrollTop || 0;
             
             connections.forEach(conn => {{
                 const fromNode = document.getElementById(conn.from);
@@ -483,30 +500,54 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
                 
                 if (fromNode && toNode) {{
                     const fromRect = fromNode.getBoundingClientRect();
-                    const containerRect = container.getBoundingClientRect();
                     const toRect = toNode.getBoundingClientRect();
                     
-                    const fromX = fromRect.left + fromRect.width / 2 - containerRect.left;
-                    const fromY = fromRect.bottom - containerRect.top;
-                    const toX = toRect.left + toRect.width / 2 - containerRect.left;
-                    const toY = toRect.top - containerRect.top;
+                    // Calculate positions relative to container, accounting for scroll
+                    const fromX = fromRect.left - containerRect.left + scrollLeft + fromRect.width / 2;
+                    const fromY = fromRect.top - containerRect.top + scrollTop + fromRect.height;
+                    const toX = toRect.left - containerRect.left + scrollLeft + toRect.width / 2;
+                    const toY = toRect.top - containerRect.top + scrollTop;
                     
-                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    const midY = (fromY + toY) / 2;
-                    const path = `M ${{fromX}} ${{fromY}} L ${{fromX}} ${{midY}} L ${{toX}} ${{midY}} L ${{toX}} ${{toY}}`;
-                    line.setAttribute('d', path);
-                    line.setAttribute('class', 'connection-line');
-                    svg.appendChild(line);
+                    // Only draw if both nodes are visible or in the container bounds
+                    if (fromX >= 0 && fromY >= 0 && toX >= 0 && toY >= 0) {{
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        const midY = (fromY + toY) / 2;
+                        const path = `M ${{fromX}} ${{fromY}} L ${{fromX}} ${{midY}} L ${{toX}} ${{midY}} L ${{toX}} ${{toY}}`;
+                        line.setAttribute('d', path);
+                        line.setAttribute('class', 'connection-line');
+                        svg.appendChild(line);
+                    }}
                 }}
             }});
         }}
         
-        // Draw connections after page load
-        setTimeout(drawConnections, 200);
+        // Draw connections after page load with multiple attempts
+        function initConnections() {{
+            setTimeout(drawConnections, 100);
+            setTimeout(drawConnections, 300);
+            setTimeout(drawConnections, 600);
+            setTimeout(drawConnections, 1000);
+        }}
+        
+        initConnections();
+        
+        // Redraw on scroll and resize
+        const container = document.getElementById('sitemapContainer');
+        if (container) {{
+            container.addEventListener('scroll', drawConnections);
+        }}
         window.addEventListener('resize', drawConnections);
         
-        // Also draw after a short delay to ensure layout is complete
-        setTimeout(drawConnections, 500);
+        // Use MutationObserver to detect layout changes
+        const observer = new MutationObserver(drawConnections);
+        if (container) {{
+            observer.observe(container, {{ 
+                childList: true, 
+                subtree: true, 
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            }});
+        }}
     </script>
     """)
     
