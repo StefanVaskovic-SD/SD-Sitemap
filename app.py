@@ -13,6 +13,7 @@ import pandas as pd
 import google.generativeai as genai
 from typing import List, Dict
 from datetime import datetime
+import json
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import re
