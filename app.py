@@ -259,85 +259,95 @@ def parse_sitemap_xml(xml_content: str) -> List[Dict]:
     
     return urls
 
-# Function for creating visual graph
-def create_visual_graph(urls: List[Dict]) -> str:
-    """Creates interactive sitemap graph using pyvis"""
-    net = Network(height='600px', width='100%', bgcolor='#222222', font_color='white', directed=True)
-    
-    # Add nodes and edges
-    nodes = {}
+# Function for creating visual tree HTML
+def create_visual_tree_html(urls: List[Dict]) -> str:
+    """Creates HTML tree visualization of sitemap"""
+    tree = {}
     
     for url_data in urls:
         url = url_data['url']
         parsed = urlparse(url)
         path_parts = [p for p in parsed.path.split('/') if p]
         
-        # Add root domain
-        domain = parsed.netloc or 'root'
-        if domain not in nodes:
-            net.add_node(domain, label=domain, color='#FF6B6B', size=30, title=domain, shape='box')
-            nodes[domain] = domain
-        
-        # Add nodes for each path part
-        current_path = domain
-        for i, part in enumerate(path_parts):
-            node_id = f"{current_path}/{part}"
-            if node_id not in nodes:
-                # Color depends on level
-                if i == 0:
-                    color = '#4ECDC4'
-                    size = 25
-                    shape = 'box'
-                elif i == 1:
-                    color = '#95E1D3'
-                    size = 20
-                    shape = 'ellipse'
-                else:
-                    color = '#F38181'
-                    size = 15
-                    shape = 'dot'
-                
-                # Shorten label if too long
-                label = part[:20] + '...' if len(part) > 20 else part
-                
-                net.add_node(
-                    node_id, 
-                    label=label, 
-                    color=color, 
-                    size=size,
-                    title=url_data['url'],
-                    shape=shape
-                )
-                nodes[node_id] = node_id
-                
-                # Add edge only if it doesn't already exist
-                if current_path != node_id:
-                    net.add_edge(current_path, node_id, arrows='to', color='#888888')
-            
-            current_path = node_id
+        current = tree
+        for part in path_parts:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
     
-    # Generate HTML with better options
-    net.set_options("""
-    {
-      "physics": {
-        "enabled": true,
-        "stabilization": {"iterations": 100},
-        "barnesHut": {
-          "gravitationalConstant": -2000,
-          "centralGravity": 0.3,
-          "springLength": 95,
-          "springConstant": 0.04,
-          "damping": 0.09
+    # Generate HTML tree
+    html_parts = []
+    html_parts.append("""
+    <style>
+        .sitemap-tree {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            min-height: 500px;
         }
-      },
-      "interaction": {
-        "hover": true,
-        "tooltipDelay": 200
-      }
-    }
+        .tree-item {
+            margin: 1px 0;
+            white-space: nowrap;
+        }
+        .tree-folder {
+            color: #4ECDC4;
+            font-weight: 600;
+        }
+        .tree-file {
+            color: #95E1D3;
+        }
+        .tree-connector {
+            color: #666;
+            margin-right: 4px;
+            font-family: monospace;
+        }
+        .tree-root {
+            color: #FF6B6B;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+    </style>
+    <div class="sitemap-tree">
     """)
     
-    return net.generate_html()
+    html_parts.append('<div class="tree-root">📁 /</div>')
+    
+    def build_tree_html(node, prefix="", is_last=True, depth=0):
+        if depth > 6:  # Limit depth
+            return
+        
+        if isinstance(node, dict):
+            items = list(node.items())
+            for i, (key, value) in enumerate(items):
+                is_last_item = i == len(items) - 1
+                connector = "└── " if is_last_item else "├── "
+                
+                # Check if it's a folder or file
+                if isinstance(value, dict) and value:
+                    icon = "📁"
+                    css_class = "tree-folder"
+                else:
+                    icon = "📄"
+                    css_class = "tree-file"
+                
+                html_parts.append(f'<div class="tree-item"><span class="tree-connector">{prefix}{connector}</span><span class="{css_class}">{icon} {key}</span></div>')
+                
+                if isinstance(value, dict) and value:
+                    extension = "    " if is_last_item else "│   "
+                    build_tree_html(value, prefix + extension, is_last_item, depth + 1)
+    
+    build_tree_html(tree)
+    html_parts.append('</div>')
+    
+    return ''.join(html_parts)
 
 # Function for creating folder tree structure
 def create_folder_tree(urls: List[Dict]) -> str:
@@ -416,16 +426,42 @@ def analyze_with_gemini(qa_pairs: List[Dict]) -> str:
     if len(qa_pairs) > 50:
         qa_text += f"\n\n... and {len(qa_pairs) - 50} more question-answer pairs."
     
-    prompt = f"""Analyze the following questions and answers and generate a detailed sitemap in XML format.
+    prompt = f"""You are creating a WEBSITE SITEMAP based on a client questionnaire. Your task is to generate ONLY the actual pages that the client needs for their website, NOT every possible option or feature mentioned in the questionnaire.
 
-Questions and answers:
+CRITICAL INSTRUCTIONS:
+1. Focus on REAL PAGES that will exist on the website - not metadata, not features, not internal processes
+2. DO NOT create pages for questionnaire options, form fields, or technical features (like "multilingual-support", "crm-functionalities", "backend-data", "event-tracking", etc.)
+3. DO NOT create separate pages for languages (no /en, /de, /ru, /sr pages - languages are handled via URL parameters or subdomains, not separate pages)
+4. Create pages only for actual CONTENT PAGES that visitors will navigate to
+5. Keep the sitemap focused and practical - typically 10-30 pages for most websites, not 50+
+6. Group related content logically into categories
+
+Questions and answers from client questionnaire:
 {qa_text}
 
-Generate a sitemap that:
-1. Organizes content into logical categories and sections based on topics from questions
-2. Creates URL structure that reflects content hierarchy (e.g. /category/subcategory/page)
-3. Includes all relevant pages based on topics from questions and answers
-4. Uses standard XML sitemap format
+Based on this questionnaire, generate a WEBSITE SITEMAP with ONLY the actual pages needed. Examples of GOOD pages:
+- /about-us
+- /properties (with subpages like /properties/apartments, /properties/chalets)
+- /contact
+- /privacy-policy
+- /blog (if blog is mentioned)
+
+Examples of BAD pages to avoid:
+- /multilingual-support (this is a feature, not a page)
+- /crm-functionalities (this is a feature, not a page)
+- /backend-data (this is technical, not a page)
+- /en, /de, /ru, /sr (languages are not separate pages)
+- /website-features (this is metadata, not a page)
+- /decision-criteria (this is questionnaire content, not a page)
+- /website-design-goals (this is planning content, not a page)
+- /evaluating-factors (this is questionnaire content, not a page)
+- /customer-feedback (this is a feature/process, not a standalone page)
+- /content-updates (this is a process, not a page)
+- /broken-links (this is technical, not a page)
+- /competitor-seo (this is analysis, not a page)
+- /website-traffic (this is analytics, not a page)
+
+IMPORTANT: If the questionnaire mentions things like "what are your goals" or "what features do you need", these are PLANNING QUESTIONS, not actual pages. Only create pages for actual content sections like About, Services, Products, Contact, Blog, etc.
 
 The sitemap format MUST be valid XML:
 <?xml version="1.0" encoding="UTF-8"?>
@@ -439,15 +475,15 @@ The sitemap format MUST be valid XML:
   ...
 </urlset>
 
-Important:
+Requirements:
 - Use only valid XML format
 - Each <url> element must have <loc>, <lastmod>, <changefreq>, and <priority>
-- URLs should be meaningful and organized by categories
-- <lastmod> format: YYYY-MM-DD
+- URLs should be clean, SEO-friendly, and organized by categories
+- <lastmod> format: YYYY-MM-DD (use current date: {datetime.now().strftime('%Y-%m-%d')})
 - <changefreq> values: always, hourly, daily, weekly, monthly, yearly, never
-- <priority> values: 0.0 to 1.0
+- <priority> values: 0.0 to 1.0 (homepage: 1.0, main pages: 0.8, subpages: 0.6, less important: 0.4)
 
-Generate complete sitemap with all relevant pages:"""
+Generate a focused, practical sitemap with ONLY the actual website pages the client needs:"""
 
     try:
         # Try with Gemini 2.5 Flash (latest model)
@@ -574,26 +610,21 @@ if uploaded_file is not None:
                             )
                         
                         with tab2:
-                            st.subheader("🗺️ Visual Sitemap - Connection Graph")
+                            st.subheader("🗺️ Visual Sitemap - Tree Structure")
                             if parsed_urls:
-                                st.info(f"📊 Displaying {len(parsed_urls)} pages in graph")
+                                st.info(f"📊 Displaying {len(parsed_urls)} pages in tree structure")
                                 
-                                # Create visual graph
+                                # Create visual tree
                                 try:
-                                    graph_html = create_visual_graph(parsed_urls)
-                                    st.components.v1.html(graph_html, height=600, scrolling=True)
+                                    tree_html = create_visual_tree_html(parsed_urls)
+                                    st.components.v1.html(tree_html, height=600, scrolling=True)
                                 except Exception as e:
-                                    st.error(f"Error creating graph: {str(e)}")
+                                    st.error(f"Error creating tree: {str(e)}")
                                     st.info("Trying alternative display...")
                                     
-                                    # Alternative display - list with hierarchy
-                                    st.markdown("### 📋 Page Hierarchy:")
-                                    for url_data in parsed_urls[:20]:  # Show first 20
-                                        url = url_data['url']
-                                        parsed = urlparse(url)
-                                        path_parts = [p for p in parsed.path.split('/') if p]
-                                        indent = "  " * len(path_parts)
-                                        st.markdown(f"{indent}📄 `{path_parts[-1] if path_parts else '/'}`")
+                                    # Alternative display - formatted tree text
+                                    tree_structure = create_folder_tree(parsed_urls)
+                                    st.code(tree_structure, language="text")
                             else:
                                 st.warning("⚠️ Cannot parse sitemap for visualization.")
                         
