@@ -469,85 +469,102 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
     # Convert connections to JSON for JavaScript
     connections_json = json.dumps(connections)
     
-    # JavaScript to draw connections
+    # JavaScript to draw connections - optimized to prevent freezing
     html_parts.append(f"""
     <script>
+        let isDrawing = false;
+        let drawTimeout = null;
+        
         function drawConnections() {{
-            const svg = document.getElementById('connectionsSvg');
-            const container = document.getElementById('sitemapContainer');
-            const connections = {connections_json};
+            if (isDrawing) return;
+            isDrawing = true;
             
-            if (!svg || !container) return;
-            
-            // Clear existing lines
-            svg.innerHTML = '';
-            
-            // Get container dimensions - use scrollWidth/scrollHeight for full content size
-            const containerWidth = Math.max(container.scrollWidth, container.offsetWidth);
-            const containerHeight = Math.max(container.scrollHeight, container.offsetHeight);
-            
-            svg.setAttribute('width', containerWidth);
-            svg.setAttribute('height', containerHeight);
-            
-            // Get container's position relative to viewport
-            const containerRect = container.getBoundingClientRect();
-            const scrollLeft = container.scrollLeft || 0;
-            const scrollTop = container.scrollTop || 0;
-            
-            connections.forEach(conn => {{
-                const fromNode = document.getElementById(conn.from);
-                const toNode = document.getElementById(conn.to);
+            try {{
+                const svg = document.getElementById('connectionsSvg');
+                const container = document.getElementById('sitemapContainer');
+                const connections = {connections_json};
                 
-                if (fromNode && toNode) {{
-                    const fromRect = fromNode.getBoundingClientRect();
-                    const toRect = toNode.getBoundingClientRect();
-                    
-                    // Calculate positions relative to container, accounting for scroll
-                    const fromX = fromRect.left - containerRect.left + scrollLeft + fromRect.width / 2;
-                    const fromY = fromRect.top - containerRect.top + scrollTop + fromRect.height;
-                    const toX = toRect.left - containerRect.left + scrollLeft + toRect.width / 2;
-                    const toY = toRect.top - containerRect.top + scrollTop;
-                    
-                    // Only draw if both nodes are visible or in the container bounds
-                    if (fromX >= 0 && fromY >= 0 && toX >= 0 && toY >= 0) {{
-                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        const midY = (fromY + toY) / 2;
-                        const path = `M ${{fromX}} ${{fromY}} L ${{fromX}} ${{midY}} L ${{toX}} ${{midY}} L ${{toX}} ${{toY}}`;
-                        line.setAttribute('d', path);
-                        line.setAttribute('class', 'connection-line');
-                        svg.appendChild(line);
-                    }}
+                if (!svg || !container) {{
+                    isDrawing = false;
+                    return;
                 }}
-            }});
+                
+                // Clear existing lines
+                svg.innerHTML = '';
+                
+                // Get container dimensions
+                const containerWidth = Math.max(container.scrollWidth || 0, container.offsetWidth || 0, 1000);
+                const containerHeight = Math.max(container.scrollHeight || 0, container.offsetHeight || 0, 1000);
+                
+                svg.setAttribute('width', containerWidth);
+                svg.setAttribute('height', containerHeight);
+                
+                // Get container's position
+                const containerRect = container.getBoundingClientRect();
+                const scrollLeft = container.scrollLeft || 0;
+                const scrollTop = container.scrollTop || 0;
+                
+                let drawnCount = 0;
+                const maxConnections = 200; // Limit to prevent freezing
+                
+                connections.slice(0, maxConnections).forEach(conn => {{
+                    const fromNode = document.getElementById(conn.from);
+                    const toNode = document.getElementById(conn.to);
+                    
+                    if (fromNode && toNode) {{
+                        try {{
+                            const fromRect = fromNode.getBoundingClientRect();
+                            const toRect = toNode.getBoundingClientRect();
+                            
+                            const fromX = fromRect.left - containerRect.left + scrollLeft + fromRect.width / 2;
+                            const fromY = fromRect.top - containerRect.top + scrollTop + fromRect.height;
+                            const toX = toRect.left - containerRect.left + scrollLeft + toRect.width / 2;
+                            const toY = toRect.top - containerRect.top + scrollTop;
+                            
+                            if (fromX >= 0 && fromY >= 0 && toX >= 0 && toY >= 0) {{
+                                const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                const midY = (fromY + toY) / 2;
+                                const path = `M ${{fromX}} ${{fromY}} L ${{fromX}} ${{midY}} L ${{toX}} ${{midY}} L ${{toX}} ${{toY}}`;
+                                line.setAttribute('d', path);
+                                line.setAttribute('class', 'connection-line');
+                                svg.appendChild(line);
+                                drawnCount++;
+                            }}
+                        }} catch(e) {{
+                            console.error('Error drawing connection:', e);
+                        }}
+                    }}
+                }});
+                
+                console.log('Drawn', drawnCount, 'connections');
+            }} catch(e) {{
+                console.error('Error in drawConnections:', e);
+            }} finally {{
+                isDrawing = false;
+            }}
         }}
         
-        // Draw connections after page load with multiple attempts
-        function initConnections() {{
-            setTimeout(drawConnections, 100);
-            setTimeout(drawConnections, 300);
-            setTimeout(drawConnections, 600);
-            setTimeout(drawConnections, 1000);
+        // Debounce function
+        function debounce(func, wait) {{
+            return function(...args) {{
+                clearTimeout(drawTimeout);
+                drawTimeout = setTimeout(() => func.apply(this, args), wait);
+            }};
         }}
         
-        initConnections();
+        const debouncedDraw = debounce(drawConnections, 300);
         
-        // Redraw on scroll and resize
+        // Draw connections after page load - only once
+        setTimeout(() => {{
+            drawConnections();
+        }}, 500);
+        
+        // Redraw on scroll and resize with debounce
         const container = document.getElementById('sitemapContainer');
         if (container) {{
-            container.addEventListener('scroll', drawConnections);
+            container.addEventListener('scroll', debouncedDraw, {{ passive: true }});
         }}
-        window.addEventListener('resize', drawConnections);
-        
-        // Use MutationObserver to detect layout changes
-        const observer = new MutationObserver(drawConnections);
-        if (container) {{
-            observer.observe(container, {{ 
-                childList: true, 
-                subtree: true, 
-                attributes: true,
-                attributeFilter: ['style', 'class']
-            }});
-        }}
+        window.addEventListener('resize', debouncedDraw, {{ passive: true }});
     </script>
     """)
     
@@ -839,15 +856,17 @@ if uploaded_file is not None:
                         
                         with tab2:
                             st.subheader("🗺️ Visual Sitemap - Tree Structure")
+                            st.info("💡 If the page freezes, use the XML Sitemap tab instead.")
+                            
                             if parsed_urls:
                                 st.info(f"📊 Displaying {len(parsed_urls)} pages in tree structure")
                                 
-                                # Create visual tree
+                                # Create visual tree with error handling
                                 try:
                                     tree_html = create_visual_tree_html(parsed_urls)
                                     st.components.v1.html(tree_html, height=600, scrolling=True)
                                 except Exception as e:
-                                    st.error(f"Error creating tree: {str(e)}")
+                                    st.error(f"Error creating visual tree: {str(e)}")
                                     st.info("Trying alternative display...")
                                     
                                     # Alternative display - formatted tree text
