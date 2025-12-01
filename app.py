@@ -1,27 +1,29 @@
 import streamlit as st
+import os
+from dotenv import load_dotenv
+
+# Load .env file first
+load_dotenv()
+
+# Load API key from environment (Render uses env vars, not .env file)
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+# Lazy imports - only import when needed
 import pandas as pd
 import google.generativeai as genai
-import os
-from typing import List, Dict, Tuple
-import json
+from typing import List, Dict
 from datetime import datetime
-from dotenv import load_dotenv
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import re
 from urllib.parse import urlparse
 
-# Load .env file
-load_dotenv()
-
-# Load API key from .env file
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-
-# Configure Gemini AI with API key
+# Configure Gemini AI with API key (only if available)
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-else:
-    st.error("❌ GEMINI_API_KEY not found in .env file! Please check the .env file.")
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        st.error(f"❌ Error configuring Gemini AI: {str(e)}")
 
 # Streamlit page configuration
 st.set_page_config(
