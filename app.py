@@ -1010,41 +1010,52 @@ NOW BEGIN - Start with STEP 1:
 
     def extract_xml_from_response(text: str) -> str:
         """Extracts XML sitemap from Gemini response that may include analysis"""
+        # First, try to find XML inside markdown code blocks (```xml ... ```)
+        markdown_xml_pattern = r'```xml\s*(.*?)```'
+        match = re.search(markdown_xml_pattern, text, re.DOTALL | re.IGNORECASE)
+        if match:
+            xml_content = match.group(1).strip()
+            # Ensure it starts with <?xml
+            if not xml_content.startswith('<?xml'):
+                xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
+            return xml_content
+        
         # Try to find XML content between <?xml and </urlset>
         xml_pattern = r'<\?xml.*?</urlset>'
-        match = re.search(xml_pattern, text, re.DOTALL)
+        match = re.search(xml_pattern, text, re.DOTALL | re.IGNORECASE)
         if match:
-            return match.group(0)
+            xml_content = match.group(0).strip()
+            # Clean up any markdown code block markers
+            xml_content = re.sub(r'```xml\s*', '', xml_content, flags=re.IGNORECASE)
+            xml_content = re.sub(r'```\s*$', '', xml_content, flags=re.IGNORECASE)
+            return xml_content.strip()
         
         # If no XML found, try to find just the urlset
         urlset_pattern = r'<urlset.*?</urlset>'
-        match = re.search(urlset_pattern, text, re.DOTALL)
+        match = re.search(urlset_pattern, text, re.DOTALL | re.IGNORECASE)
         if match:
-            return f'<?xml version="1.0" encoding="UTF-8"?>\n{match.group(0)}'
+            xml_content = match.group(0).strip()
+            # Clean up any markdown code block markers
+            xml_content = re.sub(r'```xml\s*', '', xml_content, flags=re.IGNORECASE)
+            xml_content = re.sub(r'```\s*$', '', xml_content, flags=re.IGNORECASE)
+            if not xml_content.startswith('<?xml'):
+                return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_content}'
+            return xml_content
         
         # If still no XML, return original text (might be just XML)
         return text
     
     try:
-        # Try with Gemini 2.5 Flash (latest model)
-        # First try with gemini-2.0-flash-exp (experimental, latest)
-        try:
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            response = model.generate_content(prompt)
-            return extract_xml_from_response(response.text)
-        except:
-            # Fallback to gemini-1.5-flash if 2.0 doesn't work
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(prompt)
-            return extract_xml_from_response(response.text)
+        # Use ONLY gemini-2.5-flash model
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(prompt)
+        return extract_xml_from_response(response.text)
     except Exception as e:
-        # Fallback to alternative models
-        try:
-            model = genai.GenerativeModel('gemini-pro')
-            response = model.generate_content(prompt)
-            return extract_xml_from_response(response.text)
-        except:
-            raise Exception(f"Error communicating with Gemini AI: {str(e)}")
+        # No fallback - raise error with details from Gemini
+        error_msg = f"Error communicating with Gemini AI (gemini-2.5-flash): {str(e)}"
+        if hasattr(e, 'message'):
+            error_msg += f"\nDetails: {e.message}"
+        raise Exception(error_msg)
 
 # Main part of application
 uploaded_file = st.file_uploader(
@@ -1101,6 +1112,10 @@ if uploaded_file is not None:
             help="Select the column that contains answers"
         )
     
+    # Initialize session state for results
+    if 'sitemap_results' not in st.session_state:
+        st.session_state.sitemap_results = None
+    
     # Generate button
     if st.button("🚀 Generate Sitemap", type="primary", use_container_width=True):
         if not GEMINI_API_KEY:
@@ -1113,6 +1128,7 @@ if uploaded_file is not None:
                     
                     if not qa_pairs:
                         st.warning("⚠️ No valid question-answer pairs found!")
+                        st.session_state.sitemap_results = None
                     else:
                         st.info(f"📝 Found {len(qa_pairs)} question-answer pairs")
                         
@@ -1137,94 +1153,121 @@ if uploaded_file is not None:
                         # Parse sitemap for visualization
                         parsed_urls = parse_sitemap_xml(sitemap)
                         
-                        # Tabs for displaying results
-                        tab1, tab2, tab3, tab4 = st.tabs(["📄 XML Sitemap", "🗺️ Visual Sitemap", "📁 Structure", "📊 Statistics"])
-                        
-                        with tab1:
-                            st.subheader("Generated XML Sitemap")
-                            st.code(sitemap, language="xml")
-                            
-                            # Download button with key to prevent refresh
-                            st.download_button(
-                                label="💾 Download Sitemap",
-                                data=sitemap,
-                                file_name=f"sitemap_xml-{client_name}.xml",
-                                mime="application/xml",
-                                key="download_xml_sitemap"
-                            )
-                        
-                        with tab2:
-                            st.subheader("🗺️ Visual Sitemap - Tree Structure")
-                            st.info("💡 If the page freezes, use the XML Sitemap tab instead.")
-                            
-                            if parsed_urls:
-                                st.info(f"📊 Displaying {len(parsed_urls)} pages in tree structure")
-                                
-                                # Create visual tree with error handling
-                                try:
-                                    tree_html = create_visual_tree_html(parsed_urls)
-                                    st.components.v1.html(tree_html, height=600, scrolling=True)
-                                except Exception as e:
-                                    st.error(f"Error creating visual tree: {str(e)}")
-                                    st.info("Trying alternative display...")
-                                    
-                                    # Alternative display - formatted tree text
-                                    tree_structure = create_folder_tree(parsed_urls)
-                                    st.code(tree_structure, language="text")
-                            else:
-                                st.warning("⚠️ Cannot parse sitemap for visualization.")
-                        
-                        with tab3:
-                            st.subheader("📁 Application Structure")
-                            if parsed_urls:
-                                st.info(f"📊 Displaying {len(parsed_urls)} pages in structure")
-                                
-                                # Create folder tree
-                                try:
-                                    tree_structure = create_folder_tree(parsed_urls)
-                                    st.code(tree_structure, language="text")
-                                    
-                                    # Download tree structure with key to prevent refresh
-                                    st.download_button(
-                                        label="💾 Download Structure",
-                                        data=tree_structure,
-                                        file_name=f"sitemap_structure-{client_name}.txt",
-                                        mime="text/plain",
-                                        key="download_structure"
-                                    )
-                                except Exception as e:
-                                    st.error(f"Error creating structure: {str(e)}")
-                                    
-                                    # Alternative display
-                                    st.markdown("### 📋 URL List:")
-                                    for url_data in parsed_urls:
-                                        st.markdown(f"- `{url_data['url']}`")
-                            else:
-                                st.warning("⚠️ Cannot parse sitemap for structure.")
-                        
-                        with tab4:
-                            st.subheader("Statistics")
-                            col1, col2, col3 = st.columns(3)
-                            
-                            with col1:
-                                st.metric("Total Questions", len(qa_pairs))
-                            with col2:
-                                st.metric("Total Pages", len(parsed_urls) if parsed_urls else 0)
-                            with col3:
-                                st.metric("Total CSV Rows", len(df))
-                            
-                            st.metric("CSV Columns", len(df.columns))
-                            
-                            # Display first few QA pairs
-                            st.subheader("Sample Questions and Answers")
-                            for i, pair in enumerate(qa_pairs[:5], 1):
-                                with st.expander(f"Question {pair['id']}"):
-                                    st.write("**Question:**", pair['question'])
-                                    st.write("**Answer:**", pair['answer'][:200] + "..." if len(pair['answer']) > 200 else pair['answer'])
+                        # Store results in session state
+                        st.session_state.sitemap_results = {
+                            'sitemap': sitemap,
+                            'parsed_urls': parsed_urls,
+                            'client_name': client_name,
+                            'qa_pairs': qa_pairs,
+                            'df_rows': len(df),
+                            'df_columns': len(df.columns)
+                        }
                 
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
                     st.exception(e)
+                    st.session_state.sitemap_results = None
+    
+    # Display results if they exist in session state
+    if st.session_state.sitemap_results:
+        results = st.session_state.sitemap_results
+        sitemap = results['sitemap']
+        parsed_urls = results['parsed_urls']
+        client_name = results['client_name']
+        qa_pairs = results['qa_pairs']
+        
+        # Ensure client_name is not empty for filename
+        if not client_name or client_name == "sitemap":
+            # Try to generate a filename from timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename_suffix = f"sitemap_{timestamp}"
+        else:
+            filename_suffix = client_name
+        
+        # Tabs for displaying results
+        tab1, tab2, tab3, tab4 = st.tabs(["📄 XML Sitemap", "🗺️ Visual Sitemap", "📁 Structure", "📊 Statistics"])
+        
+        with tab1:
+            st.subheader("Generated XML Sitemap")
+            st.code(sitemap, language="xml")
+            
+            # Download button with key to prevent refresh
+            st.download_button(
+                label="💾 Download Sitemap",
+                data=sitemap,
+                file_name=f"sitemap_xml-{filename_suffix}.xml",
+                mime="application/xml",
+                key="download_xml_sitemap"
+            )
+        
+        with tab2:
+            st.subheader("🗺️ Visual Sitemap - Tree Structure")
+            st.info("💡 If the page freezes, use the XML Sitemap tab instead.")
+            
+            if parsed_urls:
+                st.info(f"📊 Displaying {len(parsed_urls)} pages in tree structure")
+                
+                # Create visual tree with error handling
+                try:
+                    tree_html = create_visual_tree_html(parsed_urls)
+                    st.components.v1.html(tree_html, height=600, scrolling=True)
+                except Exception as e:
+                    st.error(f"Error creating visual tree: {str(e)}")
+                    st.info("Trying alternative display...")
+                    
+                    # Alternative display - formatted tree text
+                    tree_structure = create_folder_tree(parsed_urls)
+                    st.code(tree_structure, language="text")
+            else:
+                st.warning("⚠️ Cannot parse sitemap for visualization.")
+        
+        with tab3:
+            st.subheader("📁 Application Structure")
+            if parsed_urls:
+                st.info(f"📊 Displaying {len(parsed_urls)} pages in structure")
+                
+                # Create folder tree
+                try:
+                    tree_structure = create_folder_tree(parsed_urls)
+                    st.code(tree_structure, language="text")
+                    
+                    # Download tree structure with key to prevent refresh
+                    st.download_button(
+                        label="💾 Download Structure",
+                        data=tree_structure,
+                        file_name=f"sitemap_structure-{filename_suffix}.txt",
+                        mime="text/plain",
+                        key="download_structure"
+                    )
+                except Exception as e:
+                    st.error(f"Error creating structure: {str(e)}")
+                    
+                    # Alternative display
+                    st.markdown("### 📋 URL List:")
+                    for url_data in parsed_urls:
+                        st.markdown(f"- `{url_data['url']}`")
+            else:
+                st.warning("⚠️ Cannot parse sitemap for structure.")
+        
+        with tab4:
+            st.subheader("Statistics")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Total Questions", len(qa_pairs))
+            with col2:
+                st.metric("Total Pages", len(parsed_urls) if parsed_urls else 0)
+            with col3:
+                st.metric("Total CSV Rows", results['df_rows'])
+            
+            st.metric("CSV Columns", results['df_columns'])
+            
+            # Display first few QA pairs
+            st.subheader("Sample Questions and Answers")
+            for i, pair in enumerate(qa_pairs[:5], 1):
+                with st.expander(f"Question {pair['id']}"):
+                    st.write("**Question:**", pair['question'])
+                    st.write("**Answer:**", pair['answer'][:200] + "..." if len(pair['answer']) > 200 else pair['answer'])
 
 else:
     st.info("👆 Please upload a CSV file to get started")
