@@ -335,7 +335,7 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
     
     root_nodes = traverse_tree(tree, "", "root", 0)
     
-    # Generate HTML with SVG for connections
+    # Generate HTML with SVG for connections - hierarchical layout
     html_parts = []
     html_parts.append("""
     <style>
@@ -355,36 +355,29 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
             min-width: 100%;
             min-height: 100%;
             padding: 40px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
-        .sitemap-level {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin: 30px 0;
+        .sitemap-node-wrapper {
             position: relative;
-            width: 100%;
-            min-width: fit-content;
+            display: inline-block;
+            margin: 20px 15px;
+            vertical-align: top;
         }
         .sitemap-node {
             position: relative;
-            padding: 10px 18px;
-            border-radius: 8px;
+            padding: 8px 14px;
+            border-radius: 6px;
             text-align: center;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: #fff;
-            min-width: 100px;
-            max-width: 180px;
+            min-width: 90px;
+            max-width: 150px;
             word-wrap: break-word;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             transition: transform 0.2s, box-shadow 0.2s;
             white-space: normal;
             line-height: 1.3;
+            z-index: 2;
         }
         .sitemap-node:hover {
             transform: translateY(-2px);
@@ -395,7 +388,7 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
             background: #ff6b9d;
             color: #fff;
             font-weight: 700;
-            font-size: 15px;
+            font-size: 14px;
         }
         .node-level-0 {
             background: #ffa94d;
@@ -413,6 +406,16 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
             background: #868e96;
             color: #fff;
         }
+        .node-children {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 20px;
+            padding-top: 10px;
+            position: relative;
+        }
         .connection-line {
             stroke: #6c757d;
             stroke-width: 2;
@@ -425,42 +428,46 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 0;
-        }
-        .sitemap-level {
             z-index: 1;
-            position: relative;
+        }
+        .sitemap-tree-root {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
         }
     </style>
     <div class="sitemap-visual">
         <div class="sitemap-container" id="sitemapContainer">
     """)
     
-    # Render nodes by level
-    def render_level(nodes, level=0):
-        if not nodes:
-            return
+    # Render nodes hierarchically - each parent with its children directly below
+    def render_node_hierarchical(node, level=0, parent_id=None):
+        node_class = "node-root" if level == -1 else f"node-level-{min(level, 3)}"
+        node_id = node['id'] if level >= 0 else 'root'
+        node_name = node['name'] if level >= 0 else 'Homepage'
         
-        html_parts.append(f'<div class="sitemap-level" data-level="{level}">')
+        html_parts.append(f'<div class="sitemap-node-wrapper" id="wrapper_{node_id}">')
+        html_parts.append(f'<div class="sitemap-node {node_class}" id="{node_id}" data-name="{node_name}" data-level="{level}">{node_name}</div>')
         
-        for node in nodes:
-            node_class = "node-root" if level == -1 else f"node-level-{min(level, 3)}"
-            html_parts.append(f'<div class="sitemap-node {node_class}" id="{node["id"]}" data-name="{node["name"]}">{node["name"]}</div>')
+        if node.get('children'):
+            html_parts.append('<div class="node-children">')
+            for child in node['children']:
+                render_node_hierarchical(child, level + 1, node_id)
+            html_parts.append('</div>')
         
         html_parts.append('</div>')
-        
-        # Render children
-        for node in nodes:
-            if node['children']:
-                render_level(node['children'], level + 1)
     
-    # Add root node
-    html_parts.append('<div class="sitemap-level" data-level="-1">')
-    html_parts.append('<div class="sitemap-node node-root" id="root" data-name="Homepage">Homepage</div>')
+    # Render root and all nodes hierarchically
+    html_parts.append('<div class="sitemap-tree-root">')
+    root_node_data = {
+        'id': 'root',
+        'name': 'Homepage',
+        'children': root_nodes,
+        'depth': -1
+    }
+    render_node_hierarchical(root_node_data, -1)
     html_parts.append('</div>')
-    
-    # Render all levels
-    render_level(root_nodes, 0)
     
     # Add SVG for connections
     html_parts.append('<svg class="svg-connections" id="connectionsSvg"></svg>')
@@ -523,8 +530,10 @@ def create_visual_tree_html(urls: List[Dict]) -> str:
                             
                             if (fromX >= 0 && fromY >= 0 && toX >= 0 && toY >= 0) {{
                                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                                const midY = (fromY + toY) / 2;
-                                const path = `M ${{fromX}} ${{fromY}} L ${{fromX}} ${{midY}} L ${{toX}} ${{midY}} L ${{toX}} ${{toY}}`;
+                                // Draw straight vertical line down, then horizontal, then vertical to child
+                                const verticalGap = 10; // Gap between parent and horizontal line
+                                const horizontalY = fromY + verticalGap;
+                                const path = `M ${{fromX}} ${{fromY}} L ${{fromX}} ${{horizontalY}} L ${{toX}} ${{horizontalY}} L ${{toX}} ${{toY}}`;
                                 line.setAttribute('d', path);
                                 line.setAttribute('class', 'connection-line');
                                 svg.appendChild(line);
