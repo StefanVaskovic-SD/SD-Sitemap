@@ -972,24 +972,41 @@ NOW BEGIN - Start with STEP 1:
 
 """
 
+    def extract_xml_from_response(text: str) -> str:
+        """Extracts XML sitemap from Gemini response that may include analysis"""
+        # Try to find XML content between <?xml and </urlset>
+        xml_pattern = r'<\?xml.*?</urlset>'
+        match = re.search(xml_pattern, text, re.DOTALL)
+        if match:
+            return match.group(0)
+        
+        # If no XML found, try to find just the urlset
+        urlset_pattern = r'<urlset.*?</urlset>'
+        match = re.search(urlset_pattern, text, re.DOTALL)
+        if match:
+            return f'<?xml version="1.0" encoding="UTF-8"?>\n{match.group(0)}'
+        
+        # If still no XML, return original text (might be just XML)
+        return text
+    
     try:
         # Try with Gemini 2.5 Flash (latest model)
         # First try with gemini-2.0-flash-exp (experimental, latest)
         try:
             model = genai.GenerativeModel('gemini-2.0-flash-exp')
             response = model.generate_content(prompt)
-            return response.text
+            return extract_xml_from_response(response.text)
         except:
             # Fallback to gemini-1.5-flash if 2.0 doesn't work
             model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(prompt)
-            return response.text
+            return extract_xml_from_response(response.text)
     except Exception as e:
         # Fallback to alternative models
         try:
             model = genai.GenerativeModel('gemini-pro')
             response = model.generate_content(prompt)
-            return response.text
+            return extract_xml_from_response(response.text)
         except:
             raise Exception(f"Error communicating with Gemini AI: {str(e)}")
 
