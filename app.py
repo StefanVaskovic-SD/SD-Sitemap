@@ -622,6 +622,42 @@ def create_folder_tree(urls: List[Dict]) -> str:
     
     return "\n".join(tree_lines)
 
+# Function for extracting client name from DataFrame
+def extract_client_name(df: pd.DataFrame) -> str:
+    """Extracts client name from DataFrame - looks for 'Client Name' column or similar"""
+    # Try to find column with 'client' and 'name' in it (case insensitive)
+    client_name_col = None
+    for col in df.columns:
+        col_lower = str(col).lower()
+        if 'client' in col_lower and 'name' in col_lower:
+            client_name_col = col
+            break
+    
+    if client_name_col is None:
+        # Try just 'name' column
+        for col in df.columns:
+            if 'name' in str(col).lower() and 'client' not in str(col).lower():
+                # Check if it's likely a client name (not a generic name field)
+                sample_values = df[col].dropna().astype(str).head(5).tolist()
+                # If values look like names (not too long, not URLs, etc.)
+                if any(len(v) < 100 and not v.startswith('http') for v in sample_values):
+                    client_name_col = col
+                    break
+    
+    if client_name_col:
+        # Get first non-null value
+        client_name = df[client_name_col].dropna().iloc[0] if not df[client_name_col].dropna().empty else None
+        if client_name:
+            # Clean the name for filename use
+            client_name = str(client_name).strip()
+            # Remove invalid filename characters
+            client_name = re.sub(r'[<>:"/\\|?*]', '', client_name)
+            # Replace spaces with hyphens and limit length
+            client_name = client_name.replace(' ', '-')[:50]
+            return client_name
+    
+    return "sitemap"
+
 # Function for extracting questions and answers
 def extract_qa_pairs(df: pd.DataFrame, question_col: str, answer_col: str) -> List[Dict]:
     """Extracts question-answer pairs from DataFrame"""
@@ -1095,6 +1131,9 @@ if uploaded_file is not None:
                         # Display results
                         st.success("✅ Sitemap successfully generated!")
                         
+                        # Extract client name for filename
+                        client_name = extract_client_name(df)
+                        
                         # Parse sitemap for visualization
                         parsed_urls = parse_sitemap_xml(sitemap)
                         
@@ -1105,12 +1144,13 @@ if uploaded_file is not None:
                             st.subheader("Generated XML Sitemap")
                             st.code(sitemap, language="xml")
                             
-                            # Download button
+                            # Download button with key to prevent refresh
                             st.download_button(
                                 label="💾 Download Sitemap",
                                 data=sitemap,
-                                file_name=f"sitemap_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml",
-                                mime="application/xml"
+                                file_name=f"sitemap_xml-{client_name}.xml",
+                                mime="application/xml",
+                                key="download_xml_sitemap"
                             )
                         
                         with tab2:
@@ -1144,12 +1184,13 @@ if uploaded_file is not None:
                                     tree_structure = create_folder_tree(parsed_urls)
                                     st.code(tree_structure, language="text")
                                     
-                                    # Download tree structure
+                                    # Download tree structure with key to prevent refresh
                                     st.download_button(
                                         label="💾 Download Structure",
                                         data=tree_structure,
-                                        file_name=f"sitemap_structure_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                                        mime="text/plain"
+                                        file_name=f"sitemap_structure-{client_name}.txt",
+                                        mime="text/plain",
+                                        key="download_structure"
                                     )
                                 except Exception as e:
                                     st.error(f"Error creating structure: {str(e)}")
