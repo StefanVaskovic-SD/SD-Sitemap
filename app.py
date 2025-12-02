@@ -656,88 +656,321 @@ def analyze_with_gemini(qa_pairs: List[Dict]) -> str:
     if len(qa_pairs) > 50:
         qa_text += f"\n\n... and {len(qa_pairs) - 50} more question-answer pairs."
     
-    prompt = f"""You are creating a WEBSITE SITEMAP based on a client questionnaire. Your task is to generate ONLY the actual pages that the client needs for their website, NOT every possible option or feature mentioned in the questionnaire.
+    prompt = f"""You are creating a WEBSITE SITEMAP based on a client questionnaire. 
 
-CRITICAL INSTRUCTIONS:
-1. Focus on REAL PAGES that will exist on the website - not metadata, not features, not internal processes
-2. DO NOT create pages for questionnaire options, form fields, or technical features (like "multilingual-support", "crm-functionalities", "backend-data", "event-tracking", etc.)
-3. DO NOT create separate pages for languages (no /en, /de, /ru, /sr pages - languages are handled via URL parameters or subdomains, not separate pages)
-4. Create pages only for actual CONTENT PAGES that visitors will navigate to
-5. Keep the sitemap focused and practical - typically 10-30 pages for most websites, not 50+
-6. Group related content logically into categories
+═══════════════════════════════════════════════════════════════════════════════
+PART 1: WHAT TO INCLUDE vs WHAT TO EXCLUDE
+═══════════════════════════════════════════════════════════════════════════════
 
-Questions and answers from client questionnaire:
+✅ INCLUDE - Actual Content Pages:
+
+- Pages visitors will navigate to and view
+
+- Main navigation items (About, Services, Products, Contact, etc.)
+
+- Content listing pages (/blog, /news, /products, /projects)
+
+- Single/detail page templates (/blog/single-post, /products/single-product)
+
+- Legal pages if business requires them (Privacy Policy, Terms, Cookies)
+
+- Landing pages explicitly mentioned
+
+- Category/subcategory pages for products, services, projects, etc.
+
+❌ EXCLUDE - These Are NOT Pages:
+
+- Technical features (multilingual-support, crm-functionalities, backend-data, analytics)
+
+- Questionnaire metadata (website-goals, decision-criteria, evaluating-factors)
+
+- Internal processes (content-updates, broken-links, customer-feedback)
+
+- Admin/dashboard pages (/admin, /wp-admin, /dashboard)
+
+- User account pages (/login, /register, /my-account)
+
+- Search results pages (/search?q=)
+
+- Filter pages with URL parameters (/products?category=electronics)
+
+- Paginated pages (/blog/page/2, /blog/page/3)
+
+- Language prefixes as separate pages (/en/, /de/) - unless explicitly using subdirectory approach
+
+- Form submission endpoints
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 2: DYNAMIC CONTENT CATEGORIES - CRITICAL RULE
+═══════════════════════════════════════════════════════════════════════════════
+
+For ANY dynamic content category mentioned, you MUST include BOTH:
+
+1. Category listing page
+
+2. Single/detail page template
+
+Examples:
+
+- News → /news AND /news/single-news
+
+- Blog → /blog AND /blog/single-post
+
+- Products → /products AND /products/single-product
+
+- Projects → /projects AND /projects/single-project
+
+- Properties → /properties AND /properties/single-property
+
+- Services → /services AND /services/single-service
+
+- Events → /events AND /events/single-event
+
+- Team → /team AND /team/single-member
+
+- Portfolio → /portfolio AND /portfolio/single-work
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 3: E-COMMERCE & MULTI-LEVEL HIERARCHIES
+═══════════════════════════════════════════════════════════════════════════════
+
+If questionnaire indicates e-commerce or complex categorization:
+
+STRUCTURE:
+
+/products (main listing)
+
+/products/category-name (level 1)
+
+/products/category-name/subcategory (level 2, if needed)
+
+/products/single-product (template)
+
+RULES:
+
+- Include categories only if explicitly mentioned or clearly implied
+
+- Max 3 levels deep unless clearly needed
+
+- Logical parent-child relationship
+
+- Plural for categories, singular for templates
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 4: INDUSTRY-SPECIFIC PATTERNS
+═══════════════════════════════════════════════════════════════════════════════
+
+RESTAURANT/CAFE: /menu, /reservations, /location, /gallery
+
+REAL ESTATE: /properties, /properties/for-sale, /properties/for-rent, /properties/single-property, /agents
+
+LAW FIRM: /practice-areas, /attorneys, /case-results, /consultation
+
+MEDICAL/DENTAL: /services, /doctors, /appointments, /insurance
+
+E-COMMERCE: /products (with categories), /shipping-information, /returns-policy
+
+PORTFOLIO/AGENCY: /portfolio, /portfolio/single-project, /services, /clients
+
+SaaS/SOFTWARE: /features, /pricing, /documentation, /use-cases
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 5: MANDATORY LEGAL/COMPLIANCE PAGES
+═══════════════════════════════════════════════════════════════════════════════
+
+IF collecting user data: → /privacy-policy
+
+IF e-commerce: → /terms-and-conditions
+
+IF European audience/GDPR: → /privacy-policy AND /cookie-policy
+
+IF professional services: → /privacy-policy AND /disclaimer
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 6: MULTILINGUAL WEBSITES
+═══════════════════════════════════════════════════════════════════════════════
+
+APPROACH 1 - Subdirectory: /en/about, /de/about (duplicate structure)
+
+APPROACH 2 - Parameters: /about?lang=en (single structure)
+
+APPROACH 3 - Subdomain: en.example.com/about (separate sitemaps)
+
+DEFAULT: If multilingual mentioned but approach unclear, use APPROACH 2
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 7: PRIORITY VALUES (0.0-1.0)
+═══════════════════════════════════════════════════════════════════════════════
+
+1.0 = Homepage only
+
+0.9 = Main conversion pages (contact, pricing, services, products main)
+
+0.8 = Important content (about, main services/products)
+
+0.7 = Category listing pages (blog, news, projects)
+
+0.6 = Subcategories, team, individual service pages
+
+0.5 = Single/detail templates, less prominent content
+
+0.4 = Legal pages
+
+0.3 = Archive/tag pages
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 8: CHANGEFREQ VALUES
+═══════════════════════════════════════════════════════════════════════════════
+
+daily = News/blog listings, active e-commerce, frequently updated homepage
+
+weekly = Service pages with updates, active portfolio, events
+
+monthly = About, team, standard service/product pages, legal pages
+
+yearly = Rarely updated static content
+
+never = Historical content that won't change
+
+DEFAULT: monthly if unsure
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 9: LASTMOD DATE (YYYY-MM-DD)
+═══════════════════════════════════════════════════════════════════════════════
+
+Homepage: {datetime.now().strftime('%Y-%m-%d')}
+
+Recent/active pages: Last 30 days
+
+Standard pages: Last 90 days
+
+Legal/static: Last 180 days
+
+Vary dates realistically - don't use same date for all.
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 10: URL STRUCTURE RULES
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ USE: lowercase, hyphens, descriptive names, logical hierarchy, no trailing slash
+
+❌ AVOID: UPPERCASE, underscores, special chars, numbers at start, double slashes, excessive depth (max 3-4 levels), URLs >100 chars
+
+GOOD: /services/web-development
+
+BAD: /Services/Web_Development
+
+═══════════════════════════════════════════════════════════════════════════════
+QUESTIONNAIRE DATA
+═══════════════════════════════════════════════════════════════════════════════
+
 {qa_text}
 
-Based on this questionnaire, generate a WEBSITE SITEMAP with ONLY the actual pages needed. 
+═══════════════════════════════════════════════════════════════════════════════
+EXECUTION PROCESS - FOLLOW THESE STEPS IN ORDER
+═══════════════════════════════════════════════════════════════════════════════
 
-IMPORTANT - Single Pages for Categories:
-If the questionnaire mentions content categories like news, blog, products, projects, properties, services, etc., you MUST include:
-1. The category listing page (e.g., /news, /blog, /products, /projects)
-2. A single/detail page template (e.g., /news/single-news, /blog/single-post, /products/single-product, /projects/single-project)
+STEP 1: ANALYZE THE QUESTIONNAIRE
 
-This applies to ANY dynamic content category mentioned. Examples:
-- If "news" is mentioned → include /news AND /news/single-news
-- If "blog" is mentioned → include /blog AND /blog/single-post  
-- If "products" is mentioned → include /products AND /products/single-product
-- If "projects" is mentioned → include /projects AND /projects/single-project
-- If "properties" is mentioned → include /properties AND /properties/single-property
-- If "services" is mentioned → include /services AND /services/single-service
+First, analyze the questionnaire and output:
 
-Examples of GOOD pages:
-- /about-us
-- /properties (category listing)
-- /properties/apartments (subcategory)
-- /properties/single-property (single page template)
-- /news (category listing)
-- /news/single-news (single page template)
-- /contact
-- /privacy-policy
-- /blog (if blog is mentioned)
-- /blog/single-post (if blog is mentioned)
+```
+ANALYSIS:
 
-Examples of BAD pages to avoid:
-- /multilingual-support (this is a feature, not a page)
-- /crm-functionalities (this is a feature, not a page)
-- /backend-data (this is technical, not a page)
-- /en, /de, /ru, /sr (languages are not separate pages)
-- /website-features (this is metadata, not a page)
-- /decision-criteria (this is questionnaire content, not a page)
-- /website-design-goals (this is planning content, not a page)
-- /evaluating-factors (this is questionnaire content, not a page)
-- /customer-feedback (this is a feature/process, not a standalone page)
-- /content-updates (this is a process, not a page)
-- /broken-links (this is technical, not a page)
-- /competitor-seo (this is analysis, not a page)
-- /website-traffic (this is analytics, not a page)
+Business Type: [e.g., e-commerce, restaurant, law firm, blog, portfolio, saas]
 
-IMPORTANT RULES:
-1. If the questionnaire mentions things like "what are your goals" or "what features do you need", these are PLANNING QUESTIONS, not actual pages. Only create pages for actual content sections.
-2. For ANY content category (news, blog, products, projects, properties, services, articles, events, etc.), always include BOTH the listing page AND a single/detail page template.
-3. Keep the sitemap practical and focused - typically 15-40 pages for most websites, depending on the complexity.
-4. Use clear, SEO-friendly URL structures (lowercase, hyphens, descriptive names).
+Industry: [if identifiable]
 
-The sitemap format MUST be valid XML:
+Dynamic Content Types: [list: blog, news, products, projects, etc.]
+
+E-commerce: [YES/NO]
+
+Multilingual: [YES/NO - if yes, which approach?]
+
+Explicitly Mentioned Pages: [list]
+
+Implied Pages (from industry): [list]
+
+Required Legal Pages: [based on Part 5]
+
+Estimated Page Count: [number]
+
+```
+
+STEP 2: APPLY RULES
+
+- Check Part 2: Do all dynamic content types have listing + single page?
+
+- Check Part 3: Is e-commerce hierarchy needed?
+
+- Check Part 4: Are industry-specific pages needed?
+
+- Check Part 5: Are legal pages required?
+
+- Check Part 6: Multilingual approach?
+
+STEP 3: GENERATE XML SITEMAP
+
+Create valid XML sitemap with:
+
+- <loc>: https://example.com/page-url
+
+- <lastmod>: YYYY-MM-DD (varied realistically)
+
+- <changefreq>: Based on Part 8
+
+- <priority>: Based on Part 7
+
+Format:
+
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://example.com/category/page</loc>
-    <lastmod>2024-01-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://example.com/</loc>
+    <lastmod>{datetime.now().strftime('%Y-%m-%d')}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
   </url>
-  ...
+  <!-- other pages -->
 </urlset>
 
-Requirements:
-- Use only valid XML format
-- Each <url> element must have <loc>, <lastmod>, <changefreq>, and <priority>
-- URLs should be clean, SEO-friendly, and organized by categories
-- <lastmod> format: YYYY-MM-DD (use current date: {datetime.now().strftime('%Y-%m-%d')})
-- <changefreq> values: always, hourly, daily, weekly, monthly, yearly, never
-- <priority> values: 0.0 to 1.0 (homepage: 1.0, main pages: 0.8, subpages: 0.6, less important: 0.4)
+STEP 4: VALIDATE
 
-Generate a focused, practical sitemap with ONLY the actual website pages the client needs:"""
+✓ All dynamic content has listing + single page?
+
+✓ All URLs unique?
+
+✓ Priorities logical?
+
+✓ Changefreq appropriate?
+
+✓ Lastmod dates varied?
+
+✓ Admin/login/search pages excluded?
+
+✓ Legal pages included if needed?
+
+✓ Every page genuinely needed?
+
+✓ URL structure clean?
+
+✓ Page count reasonable?
+
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════════════════════════════════════════════
+
+Your response MUST include:
+
+1. ANALYSIS (formatted as above)
+
+2. XML SITEMAP (valid XML)
+
+3. NOTES (optional - any clarifications or assumptions)
+
+NOW BEGIN - Start with STEP 1:
+
+"""
 
     try:
         # Try with Gemini 2.5 Flash (latest model)
