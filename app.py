@@ -40,9 +40,22 @@ st.markdown("Upload a CSV file with questions and answers, and generate a detail
 with st.sidebar:
     st.markdown("### 📋 Instructions")
     st.markdown("""
-    1. Upload CSV file
-    2. Select columns with questions and answers
-    3. Click on 'Generate Sitemap'
+    1. **If you ALREADY have a questionnaire CSV:**
+       - Upload your questionnaire CSV file.
+       - Then continue from step 4.
+
+    2. **If you DO NOT have a questionnaire CSV:**
+       - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
+       - Paste that content into the AI and upload the questionare csv as an example and use  this prompt:
+       
+         `Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.`
+       
+       - Download and save the CSV file that the AI returns.
+
+    3. Upload the CSV file here in the app.
+    4. Select the columns that contain questions and answers.
+    5. Click on **"Generate Sitemap"**.
+    6. Download the generated XML sitemap.
     """)
 
 # Function for parsing CSV
