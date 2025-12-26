@@ -75,14 +75,21 @@ with st.sidebar:
         if os.path.exists(csv_file_path):
             with open(csv_file_path, 'r', encoding='utf-8') as f:
                 example_csv = f.read()
-    except Exception:
-        pass
+        else:
+            # Try relative path as fallback
+            rel_path = 'questionnaire-kolasin-valleys-website.csv'
+            if os.path.exists(rel_path):
+                with open(rel_path, 'r', encoding='utf-8') as f:
+                    example_csv = f.read()
+    except Exception as e:
+        example_csv = None
     
-    # Prepare download link HTML if CSV exists
-    download_link_html = ""
+    # Prepare download link
     if example_csv:
         b64_csv = base64.b64encode(example_csv.encode()).decode()
-        download_link_html = f' <a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">(download csv example)</a>'
+        download_link = f'<a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer; display: inline;">(download csv example)</a>'
+    else:
+        download_link = ""
     
     st.markdown(f"""
     1. **If you ALREADY have a questionnaire CSV:**
@@ -91,7 +98,7 @@ with st.sidebar:
 
     2. **If you DO NOT have a questionnaire CSV:**
        - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-       - Paste that content into the AI and upload the questionnaire csv as an example{download_link_html} and use this prompt:
+       - Paste that content into the AI and upload the questionnaire csv as an example {download_link} and use this prompt:
        
          `Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.`
        
