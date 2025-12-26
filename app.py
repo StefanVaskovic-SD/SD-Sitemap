@@ -72,13 +72,13 @@ with st.sidebar:
     st.markdown("### 📋 Instructions")
     
     st.markdown("""
-    1. **If you ALREADY have a questionnaire CSV:**
-       - Upload your questionnaire CSV file.
-       - Then continue from step 4.
+1. **If you ALREADY have a questionnaire CSV:**
+   - Upload your questionnaire CSV file.
+   - Then continue from step 4.
 
-    2. **If you DO NOT have a questionnaire CSV:**
-       - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-       - Paste that content into the AI and upload the questionnaire csv as an example""", unsafe_allow_html=True)
+2. **If you DO NOT have a questionnaire CSV:**
+   - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
+   - Paste that content into the AI and upload the questionnaire csv as an example""")
     
     # Download button with direct URL
     csv_url = "https://cdn.prod.website-files.com/69316d64cadab5d24822f841/694e78594d8da777e4cbf125_questionnaire-kolasin-valleys-website.csv"
@@ -96,20 +96,20 @@ with st.sidebar:
             use_container_width=False
         )
     except Exception as e:
-        # If URL fails, show link as fallback
         st.markdown(f'<a href="{csv_url}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline;">(download csv example)</a>', unsafe_allow_html=True)
     
-    st.markdown(""" and use this prompt:
-       
-         `Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.`
-       
-       - Download and save the CSV file that the AI returns.
+    st.markdown("""   and use this prompt:""")
+    
+    st.code("""Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.""", language=None)
+    
+    st.markdown("""   - Download and save the CSV file that the AI returns.
 
-    3. Upload the CSV file here in the app.
-    4. Select the columns that contain questions and answers.
-    5. Click on **"Generate Sitemap"**.
-    6. Download the generated XML sitemap.
-    """)
+3. Upload the CSV file here in the app.
+4. Select the columns that contain questions and answers.
+5. Click on **"Generate Sitemap"**.
+6. Download the generated XML sitemap.""")
+
+
 
 # Function for parsing CSV
 def parse_csv(file) -> pd.DataFrame:
