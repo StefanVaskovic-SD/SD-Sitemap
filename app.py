@@ -58,32 +58,20 @@ with st.sidebar:
     except FileNotFoundError:
         example_csv = None
     
+    # Prepare download link if CSV exists
+    download_link_html = ""
     if example_csv:
-        # Create download link using base64 encoding
         b64_csv = base64.b64encode(example_csv.encode()).decode()
-        download_link = f'<a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">(download csv example)</a>'
-        
-        st.markdown(f"""
-    1. **If you ALREADY have a questionnaire CSV:**
-       - Upload your questionnaire CSV file.
-       - Then continue from step 4.
-
-    2. **If you DO NOT have a questionnaire CSV:**
-       - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-       - Paste that content into the AI and upload the questionnaire csv as an example {download_link} and use this prompt:
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-    1. **If you ALREADY have a questionnaire CSV:**
-       - Upload your questionnaire CSV file.
-       - Then continue from step 4.
-
-    2. **If you DO NOT have a questionnaire CSV:**
-       - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-       - Paste that content into the AI and upload the questionnaire csv as an example and use this prompt:
-        """, unsafe_allow_html=True)
+        download_link_html = f' <a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">(download csv example)</a>'
     
-    st.markdown("""
+    st.markdown(f"""
+    1. **If you ALREADY have a questionnaire CSV:**
+       - Upload your questionnaire CSV file.
+       - Then continue from step 4.
+
+    2. **If you DO NOT have a questionnaire CSV:**
+       - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
+       - Paste that content into the AI and upload the questionnaire csv as an example{download_link_html} and use this prompt:
        
          `Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.`
        
@@ -93,7 +81,7 @@ with st.sidebar:
     4. Select the columns that contain questions and answers.
     5. Click on **"Generate Sitemap"**.
     6. Download the generated XML sitemap.
-    """)
+    """, unsafe_allow_html=True)
 
 # Function for parsing CSV
 def parse_csv(file) -> pd.DataFrame:
