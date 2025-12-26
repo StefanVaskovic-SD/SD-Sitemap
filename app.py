@@ -34,14 +34,15 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS to expand sidebar width and style download button as link
+# Custom CSS to expand sidebar width and style download button as inline link
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
         min-width: 380px !important;
         max-width: 380px !important;
     }
-    button[data-testid="baseButton-secondary"][aria-label*="download csv example"] {
+    /* Style download button to look like inline link */
+    div[data-testid="stDownloadButton"] button {
         background: transparent !important;
         border: none !important;
         color: #1f77b4 !important;
@@ -52,10 +53,12 @@ st.markdown("""
         height: auto !important;
         margin: 0 !important;
         display: inline !important;
+        font-weight: normal !important;
     }
-    button[data-testid="baseButton-secondary"][aria-label*="download csv example"]:hover {
+    div[data-testid="stDownloadButton"] button:hover {
         color: #0d5a8a !important;
         background: transparent !important;
+        text-decoration: underline !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -84,21 +87,27 @@ with st.sidebar:
     except Exception as e:
         example_csv = None
     
-    # Prepare download link
-    if example_csv:
-        b64_csv = base64.b64encode(example_csv.encode()).decode()
-        download_link = f'<a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer; display: inline;">(download csv example)</a>'
-    else:
-        download_link = ""
-    
-    st.markdown(f"""
+    st.markdown("""
     1. **If you ALREADY have a questionnaire CSV:**
        - Upload your questionnaire CSV file.
        - Then continue from step 4.
 
     2. **If you DO NOT have a questionnaire CSV:**
        - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-       - Paste that content into the AI and upload the questionnaire csv as an example {download_link} and use this prompt:
+       - Paste that content into the AI and upload the questionnaire csv as an example""", unsafe_allow_html=True)
+    
+    # Use st.sidebar.download_button directly (Streamlit blocks HTML links in sidebar)
+    if example_csv:
+        st.download_button(
+            label="(download csv example)",
+            data=example_csv,
+            file_name="questionnaire-kolasin-valleys-website.csv",
+            mime="text/csv",
+            key="download_example_csv_sidebar",
+            use_container_width=False
+        )
+    
+    st.markdown(""" and use this prompt:
        
          `Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.`
        
@@ -108,7 +117,7 @@ with st.sidebar:
     4. Select the columns that contain questions and answers.
     5. Click on **"Generate Sitemap"**.
     6. Download the generated XML sitemap.
-    """, unsafe_allow_html=True)
+    """)
 
 # Function for parsing CSV
 def parse_csv(file) -> pd.DataFrame:
