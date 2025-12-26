@@ -67,45 +67,31 @@ st.markdown("Upload a CSV file with questions and answers, and generate a detail
 with st.sidebar:
     st.markdown("### 📋 Instructions")
     
-    # Load example CSV file for download
+    # Load example CSV file for download - use absolute path
     example_csv = None
-    csv_file_path = 'questionnaire-kolasin-valleys-website.csv'
+    csv_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'questionnaire-kolasin-valleys-website.csv')
     
-    # Try multiple paths - Streamlit runs from project root
-    possible_paths = [
-        csv_file_path,  # Current directory (project root)
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), csv_file_path),  # Same dir as app.py
-    ]
+    try:
+        if os.path.exists(csv_file_path):
+            with open(csv_file_path, 'r', encoding='utf-8') as f:
+                example_csv = f.read()
+    except Exception:
+        pass
     
-    for path in possible_paths:
-        try:
-            if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f:
-                    example_csv = f.read()
-                break
-        except Exception as e:
-            continue
+    # Prepare download link HTML if CSV exists
+    download_link_html = ""
+    if example_csv:
+        b64_csv = base64.b64encode(example_csv.encode()).decode()
+        download_link_html = f' <a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">(download csv example)</a>'
     
-    st.markdown("""
+    st.markdown(f"""
     1. **If you ALREADY have a questionnaire CSV:**
        - Upload your questionnaire CSV file.
        - Then continue from step 4.
 
     2. **If you DO NOT have a questionnaire CSV:**
        - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-       - Paste that content into the AI and upload the questionnaire csv as an example""", unsafe_allow_html=True)
-    
-    if example_csv:
-        st.download_button(
-            label="(download csv example)",
-            data=example_csv,
-            file_name="questionnaire-kolasin-valleys-website.csv",
-            mime="text/csv",
-            key="download_example_csv_sidebar",
-            use_container_width=False
-        )
-    
-    st.markdown(""" and use this prompt:
+       - Paste that content into the AI and upload the questionnaire csv as an example{download_link_html} and use this prompt:
        
          `Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.`
        
@@ -115,7 +101,7 @@ with st.sidebar:
     4. Select the columns that contain questions and answers.
     5. Click on **"Generate Sitemap"**.
     6. Download the generated XML sitemap.
-    """)
+    """, unsafe_allow_html=True)
 
 # Function for parsing CSV
 def parse_csv(file) -> pd.DataFrame:
