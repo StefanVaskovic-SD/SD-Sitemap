@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import base64
 from dotenv import load_dotenv
 
 # Load .env file first
@@ -33,64 +34,56 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS to expand sidebar width
+st.markdown("""
+    <style>
+    [data-testid="stSidebar"] {
+        min-width: 380px !important;
+        max-width: 380px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 st.title("🗺️ Sitemap Generator")
 st.markdown("Upload a CSV file with questions and answers, and generate a detailed sitemap using Gemini AI")
 
 # Sidebar for instructions
 with st.sidebar:
-    # Add CSS to expand sidebar width by 80px and style download button as link
-    st.markdown("""
-    <style>
-    [data-testid="stSidebar"] {
-        width: calc(21rem + 80px) !important;
-    }
-    div[data-testid="stDownloadButton"] > button {
-        background: transparent !important;
-        border: none !important;
-        color: #1f77b4 !important;
-        text-decoration: underline !important;
-        padding: 0 !important;
-        font-size: inherit !important;
-        font-weight: inherit !important;
-        box-shadow: none !important;
-    }
-    div[data-testid="stDownloadButton"] > button:hover {
-        color: #0d5a8a !important;
-        text-decoration: underline !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
     st.markdown("### 📋 Instructions")
     
-    # Load CSV example file for download
+    # Load example CSV file for download
     try:
         with open('questionnaire-kolasin-valleys-website.csv', 'r', encoding='utf-8') as f:
-            csv_example_data = f.read()
+            example_csv = f.read()
     except FileNotFoundError:
-        csv_example_data = None
+        example_csv = None
     
-    st.markdown("""
+    if example_csv:
+        # Create download link using base64 encoding
+        b64_csv = base64.b64encode(example_csv.encode()).decode()
+        download_link = f'<a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">(download csv example)</a>'
+        
+        st.markdown(f"""
     1. **If you ALREADY have a questionnaire CSV:**
        - Upload your questionnaire CSV file.
        - Then continue from step 4.
 
     2. **If you DO NOT have a questionnaire CSV:**
        - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-       - Paste that content into the AI and upload the questionnaire csv as an example """, unsafe_allow_html=True)
+       - Paste that content into the AI and upload the questionnaire csv as an example {download_link} and use this prompt:
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+    1. **If you ALREADY have a questionnaire CSV:**
+       - Upload your questionnaire CSV file.
+       - Then continue from step 4.
+
+    2. **If you DO NOT have a questionnaire CSV:**
+       - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
+       - Paste that content into the AI and upload the questionnaire csv as an example and use this prompt:
+        """, unsafe_allow_html=True)
     
-    # Add download link for CSV example - styled as inline link
-    if csv_example_data:
-        st.download_button(
-            label="(download csv example)",
-            data=csv_example_data,
-            file_name="questionnaire-kolasin-valleys-website.csv",
-            mime="text/csv",
-            key="download_csv_example",
-            use_container_width=False
-        )
-    
-    st.markdown(""" and use this prompt:
+    st.markdown("""
        
          `Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.`
        
