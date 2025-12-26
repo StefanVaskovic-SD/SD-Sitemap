@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import base64
+import urllib.request
 from dotenv import load_dotenv
 
 # Load .env file first
@@ -70,23 +71,6 @@ st.markdown("Upload a CSV file with questions and answers, and generate a detail
 with st.sidebar:
     st.markdown("### 📋 Instructions")
     
-    # Load example CSV file for download - use absolute path
-    example_csv = None
-    csv_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'questionnaire-kolasin-valleys-website.csv')
-    
-    try:
-        if os.path.exists(csv_file_path):
-            with open(csv_file_path, 'r', encoding='utf-8') as f:
-                example_csv = f.read()
-        else:
-            # Try relative path as fallback
-            rel_path = 'questionnaire-kolasin-valleys-website.csv'
-            if os.path.exists(rel_path):
-                with open(rel_path, 'r', encoding='utf-8') as f:
-                    example_csv = f.read()
-    except Exception as e:
-        example_csv = None
-    
     st.markdown("""
     1. **If you ALREADY have a questionnaire CSV:**
        - Upload your questionnaire CSV file.
@@ -96,8 +80,13 @@ with st.sidebar:
        - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
        - Paste that content into the AI and upload the questionnaire csv as an example""", unsafe_allow_html=True)
     
-    # Use st.sidebar.download_button directly (Streamlit blocks HTML links in sidebar)
-    if example_csv:
+    # Download button with direct URL
+    csv_url = "https://cdn.prod.website-files.com/69316d64cadab5d24822f841/694e78594d8da777e4cbf125_questionnaire-kolasin-valleys-website.csv"
+    
+    # Fetch CSV content from URL
+    try:
+        with urllib.request.urlopen(csv_url) as response:
+            example_csv = response.read().decode('utf-8')
         st.download_button(
             label="(download csv example)",
             data=example_csv,
@@ -106,6 +95,9 @@ with st.sidebar:
             key="download_example_csv_sidebar",
             use_container_width=False
         )
+    except Exception as e:
+        # If URL fails, show link as fallback
+        st.markdown(f'<a href="{csv_url}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline;">(download csv example)</a>', unsafe_allow_html=True)
     
     st.markdown(""" and use this prompt:
        
