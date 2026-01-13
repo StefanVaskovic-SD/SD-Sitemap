@@ -69,6 +69,10 @@ st.markdown("""
     h1[id] {
         scroll-margin-top: 0;
     }
+    /* Hide file size limit text below file uploader */
+    div[data-testid="stFileUploader"] > div > small {
+        display: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1133,7 +1137,7 @@ NOW BEGIN - Start with STEP 1:
 
 # Main part of application
 uploaded_file = st.file_uploader(
-    "See instructions on the left and prepare a .csv file (max limit: 200MB)",
+    "Drag and drop the file here",
     type=['csv']
 )
 
