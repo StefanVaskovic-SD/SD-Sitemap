@@ -35,7 +35,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS to expand sidebar width and style download button as inline link
+# Custom CSS to expand sidebar width, style download button, and hide permalink
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
@@ -61,11 +61,19 @@ st.markdown("""
         background: transparent !important;
         text-decoration: underline !important;
     }
+    /* Hide permalink/anchor link next to H1 */
+    [data-testid="stHeaderActionElements"] {
+        display: none !important;
+    }
+    /* Remove ID from H1 */
+    h1[id] {
+        scroll-margin-top: 0;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🗺️ Sitemap Generator")
-st.markdown("Upload a CSV file with questions and answers, and generate a detailed sitemap using Gemini AI")
+st.markdown("Generate a sitemap based on answers in the Discovery questionnaire.")
 
 # Sidebar for instructions
 with st.sidebar:
@@ -1125,9 +1133,8 @@ NOW BEGIN - Start with STEP 1:
 
 # Main part of application
 uploaded_file = st.file_uploader(
-    "Upload CSV file",
-    type=['csv'],
-    help="Select a CSV file that contains questions and answers"
+    "See instructions on the left and prepare a .csv file (max limit: 200MB)",
+    type=['csv']
 )
 
 if uploaded_file is not None:
@@ -1336,12 +1343,7 @@ if uploaded_file is not None:
                     st.write("**Answer:**", pair['answer'][:200] + "..." if len(pair['answer']) > 200 else pair['answer'])
 
 else:
-    st.info("👆 Please upload a CSV file to get started")
+    
 
-# Footer
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: gray;'>Sitemap Generator - Powered by Gemini AI</div>",
-    unsafe_allow_html=True
-)
+
 
