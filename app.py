@@ -80,6 +80,18 @@ st.markdown("""
         display: none !important;
     }
     </style>
+    <script>
+    // Change text in upload box from "Drag and drop file here" to "Drag and drop the file here"
+    window.addEventListener('load', function() {
+        const uploader = document.querySelector('[data-testid="stFileUploader"]');
+        if (uploader) {
+            const textElement = uploader.querySelector('div > div > div:first-child');
+            if (textElement && textElement.textContent.includes('Drag and drop file here')) {
+                textElement.textContent = textElement.textContent.replace('Drag and drop file here', 'Drag and drop the file here');
+            }
+        }
+    });
+    </script>
     """, unsafe_allow_html=True)
 
 st.title("🗺️ Sitemap Generator")
@@ -1148,7 +1160,7 @@ NOW BEGIN - Start with STEP 1:
 
 # Main part of application
 uploaded_file = st.file_uploader(
-    "Drag and drop the file here",
+    "See instructions on the left and prepare a .csv file (max limit: 200MB).",
     type=['csv']
 )
 
