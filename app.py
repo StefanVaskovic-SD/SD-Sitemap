@@ -91,15 +91,15 @@ st.markdown("""
         background-color: #f0f0f0 !important;
         color: black !important;
     }
-    /* Style Download sitemap button in Structure tab - white background, black text, no icon */
-    div[data-testid="stDownloadButton"] button:has-text("Download sitemap"),
-    button[kind="secondary"]:has-text("Download sitemap") {
+    /* Style Download sitemap button - white background, black text, no icon */
+    div[data-testid="stDownloadButton"] button,
+    button[kind="secondary"] {
         background-color: white !important;
         color: black !important;
         border: 1px solid #ccc !important;
     }
-    div[data-testid="stDownloadButton"] button:has-text("Download sitemap"):hover,
-    button[kind="secondary"]:has-text("Download sitemap"):hover {
+    div[data-testid="stDownloadButton"] button:hover,
+    button[kind="secondary"]:hover {
         background-color: #f0f0f0 !important;
         color: black !important;
     }
@@ -126,7 +126,7 @@ st.markdown("""
         });
         
         // Style Download sitemap button - white background, black text, remove icon
-        const downloadButtons = document.querySelectorAll('button');
+        const downloadButtons = document.querySelectorAll('[data-testid="stDownloadButton"] button, button[kind="secondary"]');
         downloadButtons.forEach(btn => {
             if (btn.textContent.includes('Download sitemap')) {
                 btn.style.backgroundColor = 'white';
@@ -139,6 +139,25 @@ st.markdown("""
                 }
             }
         });
+        
+        // Also apply to all secondary buttons in Structure tab
+        setTimeout(() => {
+            const structureTab = document.querySelector('[data-baseweb="tab"][aria-selected="true"]');
+            if (structureTab && structureTab.textContent.includes('Suggested sitemap')) {
+                const allSecondaryButtons = document.querySelectorAll('button[kind="secondary"]');
+                allSecondaryButtons.forEach(btn => {
+                    if (btn.textContent.includes('Download sitemap')) {
+                        btn.style.backgroundColor = 'white';
+                        btn.style.color = 'black';
+                        btn.style.border = '1px solid #ccc';
+                        const icon = btn.querySelector('svg');
+                        if (icon) {
+                            icon.remove();
+                        }
+                    }
+                });
+            }
+        }, 100);
     });
     </script>
     """, unsafe_allow_html=True)
@@ -1343,7 +1362,7 @@ if uploaded_file is not None:
             # Header with title and download button in same line
             col1, col2 = st.columns([10, 1])
             with col1:
-                st.subheader("Structure")
+                st.subheader("Suggested sitemap")
             with col2:
                 if parsed_urls:
                     tree_structure = create_folder_tree(parsed_urls)
@@ -1353,7 +1372,8 @@ if uploaded_file is not None:
                         file_name=f"sitemap_structure-{filename_suffix}.txt",
                         mime="text/plain",
                         key="download_structure",
-                        use_container_width=True
+                        use_container_width=True,
+                        type="secondary"
                     )
             
             if parsed_urls:
