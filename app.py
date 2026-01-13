@@ -84,7 +84,7 @@ with st.sidebar:
     st.markdown("### 📋 Instructions")
     
     # CSV URL for download link
-    csv_url = "https://cdn.prod.website-files.com/69316d64cadab5d24822f841/694e78594d8da777e4cbf125_questionnaire-kolasin-valleys-website.csv"
+    csv_url = "https://cdn.prod.website-files.com/688374c188668cbfc0b13e24/69663d18335126d6ad4a79be_sd-sitemap-template-file.csv"
     
     # Fetch CSV content from URL for download
     try:
@@ -92,10 +92,10 @@ with st.sidebar:
             example_csv = response.read().decode('utf-8')
         # Create base64 encoded data URL for download
         b64_csv = base64.b64encode(example_csv.encode()).decode()
-        download_link = f'<a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">questionnaire csv</a>'
+        download_link = f'<a href="data:text/csv;base64,{b64_csv}" download="sd-sitemap-template-file.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">questionnaire csv</a>'
     except Exception:
         # Fallback to direct URL link
-        download_link = f'<a href="{csv_url}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">questionnaire csv</a>'
+        download_link = f'<a href="{csv_url}" download="sd-sitemap-template-file.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">questionnaire csv</a>'
     
     st.markdown(f"""
 **Step 1: Prepare .csv file**
