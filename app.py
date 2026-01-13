@@ -73,6 +73,12 @@ st.markdown("""
     div[data-testid="stFileUploader"] > div > small {
         display: none !important;
     }
+    /* Hide Browse files button */
+    div[data-testid="stFileUploader"] button[kind="secondary"],
+    div[data-testid="stFileUploader"] button[type="button"],
+    div[data-testid="stFileUploader"] > div > div > button {
+        display: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1147,17 +1153,12 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Show file info
-    st.info(f"📄 File: **{uploaded_file.name}** ({uploaded_file.size} bytes)")
-    
     # Parse CSV with error handling
     try:
         df = parse_csv(uploaded_file)
         
         if df.empty:
             st.warning("⚠️ CSV file is loaded but empty (no rows with data).")
-        else:
-            st.success(f"✅ CSV file loaded! Total rows: {len(df)}")
     except Exception as e:
         st.error(f"❌ Error loading CSV file: {str(e)}")
         
@@ -1169,30 +1170,45 @@ if uploaded_file is not None:
         
         st.stop()  # Stop execution if file cannot be loaded
     
-    # Display first rows
-    with st.expander("📊 Data Preview", expanded=False):
-        st.dataframe(df.head(10))
-        st.info(f"Total columns: {len(df.columns)}")
-        st.write("Columns:", list(df.columns))
+    # Automatically detect question and answer columns
+    question_column = None
+    answer_column = None
     
-    # Column selection
-    st.subheader("🔍 Select Columns")
+    # Try to find columns with "question" in name (case insensitive)
+    for col in df.columns:
+        col_lower = str(col).lower()
+        if 'question' in col_lower and question_column is None:
+            question_column = col
+        if 'answer' in col_lower and answer_column is None:
+            answer_column = col
     
-    col1, col2 = st.columns(2)
+    # If not found, try alternative names
+    if question_column is None:
+        for col in df.columns:
+            col_lower = str(col).lower()
+            if any(keyword in col_lower for keyword in ['q', 'quest', 'pitanje']):
+                question_column = col
+                break
     
-    with col1:
-        question_column = st.selectbox(
-            "Question column:",
-            options=df.columns.tolist(),
-            help="Select the column that contains questions"
-        )
+    if answer_column is None:
+        for col in df.columns:
+            col_lower = str(col).lower()
+            if any(keyword in col_lower for keyword in ['a', 'ans', 'odgovor']):
+                answer_column = col
+                break
     
-    with col2:
-        answer_column = st.selectbox(
-            "Answer column:",
-            options=df.columns.tolist(),
-            help="Select the column that contains answers"
-        )
+    # Fallback to first two columns if still not found
+    if question_column is None and len(df.columns) > 0:
+        question_column = df.columns[0]
+    if answer_column is None and len(df.columns) > 1:
+        answer_column = df.columns[1]
+    elif answer_column is None:
+        answer_column = df.columns[0] if len(df.columns) > 0 else None
+    
+    # Validate columns were found
+    if question_column is None or answer_column is None:
+        st.error("❌ Could not automatically detect question and answer columns. Please ensure your CSV has columns with 'question' and 'answer' in their names.")
+        st.stop()
     
     # Initialize session state for results
     if 'sitemap_results' not in st.session_state:
