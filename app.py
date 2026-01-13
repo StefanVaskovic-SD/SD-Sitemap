@@ -1299,22 +1299,22 @@ if uploaded_file is not None:
                     
                     progress_bar.progress(100)
                     status_text.text("✅ Sitemap generated!")
-                        
-                        # Extract client name for filename
-                        client_name = extract_client_name(df)
-                        
-                        # Parse sitemap for visualization
-                        parsed_urls = parse_sitemap_xml(sitemap)
-                        
-                        # Store results in session state
-                        st.session_state.sitemap_results = {
-                            'sitemap': sitemap,
-                            'parsed_urls': parsed_urls,
-                            'client_name': client_name,
-                            'qa_pairs': qa_pairs,
-                            'df_rows': len(df),
-                            'df_columns': len(df.columns)
-                        }
+                    
+                    # Extract client name for filename
+                    client_name = extract_client_name(df)
+                    
+                    # Parse sitemap for visualization
+                    parsed_urls = parse_sitemap_xml(sitemap)
+                    
+                    # Store results in session state
+                    st.session_state.sitemap_results = {
+                        'sitemap': sitemap,
+                        'parsed_urls': parsed_urls,
+                        'client_name': client_name,
+                        'qa_pairs': qa_pairs,
+                        'df_rows': len(df),
+                        'df_columns': len(df.columns)
+                    }
                 
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
