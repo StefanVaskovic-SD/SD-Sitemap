@@ -79,25 +79,31 @@ st.markdown("""
     div[data-testid="stFileUploader"] > div > div > button {
         display: none !important;
     }
-    /* Style all secondary buttons - white background, black text */
+    /* Style all secondary buttons - white background, black text, no underline, single line */
     button[kind="secondary"] {
         background-color: white !important;
         color: black !important;
         border: 1px solid #ccc !important;
+        text-decoration: none !important;
+        white-space: nowrap !important;
     }
     button[kind="secondary"]:hover {
         background-color: #f0f0f0 !important;
         color: black !important;
+        text-decoration: none !important;
     }
     /* Style Download button specifically */
     div[data-testid="stDownloadButton"] button {
         background-color: white !important;
         color: black !important;
         border: 1px solid #ccc !important;
+        text-decoration: none !important;
+        white-space: nowrap !important;
     }
     div[data-testid="stDownloadButton"] button:hover {
         background-color: #f0f0f0 !important;
         color: black !important;
+        text-decoration: none !important;
     }
     </style>
     <script>
@@ -111,20 +117,24 @@ st.markdown("""
             }
         }
         
-        // Style all secondary buttons - white background, black text
+        // Style all secondary buttons - white background, black text, no underline
         const allSecondaryButtons = document.querySelectorAll('button[kind="secondary"]');
         allSecondaryButtons.forEach(btn => {
             btn.style.backgroundColor = 'white';
             btn.style.color = 'black';
             btn.style.border = '1px solid #ccc';
+            btn.style.textDecoration = 'none';
+            btn.style.whiteSpace = 'nowrap';
         });
         
-        // Style Download sitemap button - remove icon
+        // Style Download sitemap button - remove icon, ensure single line
         const downloadButtons = document.querySelectorAll('[data-testid="stDownloadButton"] button');
         downloadButtons.forEach(btn => {
             btn.style.backgroundColor = 'white';
             btn.style.color = 'black';
             btn.style.border = '1px solid #ccc';
+            btn.style.textDecoration = 'none';
+            btn.style.whiteSpace = 'nowrap';
             // Remove icon if present
             const icon = btn.querySelector('svg');
             if (icon) {
@@ -194,11 +204,7 @@ with st.sidebar:
 
 - Drag and drop or upload the .csv file here on the right.
 
-**Step 3: Setup**
-
-- Select the columns that contain questions and answers.
-
-**Step 4: Generate and download the sitemap**
+**Step 3: Generate and download the sitemap**
 
 - Click button Generate Sitemap.
 - Download the generated XML sitemap.
@@ -1281,8 +1287,9 @@ if uploaded_file is not None:
     if 'sitemap_results' not in st.session_state:
         st.session_state.sitemap_results = None
     
-    # Generate button
-    if st.button("🚀 Generate Sitemap", type="secondary", use_container_width=True):
+    # Generate/Regenerate button - change text if sitemap already exists
+    button_label = "🚀 Regenerate Sitemap" if st.session_state.sitemap_results else "🚀 Generate Sitemap"
+    if st.button(button_label, type="secondary", use_container_width=True):
         if not GEMINI_API_KEY:
             st.error("❌ GEMINI_API_KEY not found in .env file! Please check the .env file.")
         else:
@@ -1346,22 +1353,20 @@ if uploaded_file is not None:
         tab1, tab2 = st.tabs(["📁 Suggested sitemap", "📊 Statistics"])
         
         with tab1:
-            # Header with title and download button in same line
-            col1, col2 = st.columns([10, 1])
-            with col1:
-                st.subheader("Suggested sitemap")
-            with col2:
-                if parsed_urls:
-                    tree_structure = create_folder_tree(parsed_urls)
-                    st.download_button(
-                        label="Download sitemap",
-                        data=tree_structure,
-                        file_name=f"sitemap_structure-{filename_suffix}.txt",
-                        mime="text/plain",
-                        key="download_structure",
-                        use_container_width=True,
-                        type="secondary"
-                    )
+            st.subheader("Suggested sitemap")
+            
+            # Download button - same style as Generate Sitemap
+            if parsed_urls:
+                tree_structure = create_folder_tree(parsed_urls)
+                st.download_button(
+                    label="Download sitemap",
+                    data=tree_structure,
+                    file_name=f"sitemap_structure-{filename_suffix}.txt",
+                    mime="text/plain",
+                    key="download_structure",
+                    use_container_width=True,
+                    type="secondary"
+                )
             
             if parsed_urls:
                 # Create folder tree
