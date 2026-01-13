@@ -79,27 +79,23 @@ st.markdown("""
     div[data-testid="stFileUploader"] > div > div > button {
         display: none !important;
     }
-    /* Style Generate Sitemap button - white background, black text */
-    button[kind="primary"]:has-text("Generate Sitemap"),
-    button[aria-label*="Generate Sitemap"] {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #ccc !important;
-    }
-    button[kind="primary"]:has-text("Generate Sitemap"):hover,
-    button[aria-label*="Generate Sitemap"]:hover {
-        background-color: #f0f0f0 !important;
-        color: black !important;
-    }
-    /* Style Download sitemap button - white background, black text, no icon */
-    div[data-testid="stDownloadButton"] button,
+    /* Style all secondary buttons - white background, black text */
     button[kind="secondary"] {
         background-color: white !important;
         color: black !important;
         border: 1px solid #ccc !important;
     }
-    div[data-testid="stDownloadButton"] button:hover,
     button[kind="secondary"]:hover {
+        background-color: #f0f0f0 !important;
+        color: black !important;
+    }
+    /* Style Download button specifically */
+    div[data-testid="stDownloadButton"] button {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+    }
+    div[data-testid="stDownloadButton"] button:hover {
         background-color: #f0f0f0 !important;
         color: black !important;
     }
@@ -115,28 +111,24 @@ st.markdown("""
             }
         }
         
-        // Style Generate Sitemap button - white background, black text
-        const generateButtons = document.querySelectorAll('button');
-        generateButtons.forEach(btn => {
-            if (btn.textContent.includes('Generate Sitemap')) {
-                btn.style.backgroundColor = 'white';
-                btn.style.color = 'black';
-                btn.style.border = '1px solid #ccc';
-            }
+        // Style all secondary buttons - white background, black text
+        const allSecondaryButtons = document.querySelectorAll('button[kind="secondary"]');
+        allSecondaryButtons.forEach(btn => {
+            btn.style.backgroundColor = 'white';
+            btn.style.color = 'black';
+            btn.style.border = '1px solid #ccc';
         });
         
-        // Style Download sitemap button - white background, black text, remove icon
-        const downloadButtons = document.querySelectorAll('[data-testid="stDownloadButton"] button, button[kind="secondary"]');
+        // Style Download sitemap button - remove icon
+        const downloadButtons = document.querySelectorAll('[data-testid="stDownloadButton"] button');
         downloadButtons.forEach(btn => {
-            if (btn.textContent.includes('Download sitemap')) {
-                btn.style.backgroundColor = 'white';
-                btn.style.color = 'black';
-                btn.style.border = '1px solid #ccc';
-                // Remove icon if present
-                const icon = btn.querySelector('svg');
-                if (icon) {
-                    icon.remove();
-                }
+            btn.style.backgroundColor = 'white';
+            btn.style.color = 'black';
+            btn.style.border = '1px solid #ccc';
+            // Remove icon if present
+            const icon = btn.querySelector('svg');
+            if (icon) {
+                icon.remove();
             }
         });
         
@@ -764,28 +756,23 @@ def create_folder_tree(urls: List[Dict]) -> str:
                 current[part] = {}
             current = current[part]
     
-    # Create tree string
+    # Create tree string with bullets
     tree_lines = []
-    tree_lines.append("📁 /")
     
-    def print_tree(node, prefix="", is_last=True, depth=0):
-        """Recursively prints tree structure"""
+    def print_tree(node, depth=0):
+        """Recursively prints tree structure with bullets"""
         if depth > 6:  # Limit depth
             return
         
         if isinstance(node, dict):
             items = list(node.items())
-            for i, (key, value) in enumerate(items):
-                is_last_item = i == len(items) - 1
-                connector = "└── " if is_last_item else "├── "
-                
-                # Add icon depending on whether it has children
-                icon = "📁" if isinstance(value, dict) and value else "📄"
-                tree_lines.append(prefix + connector + icon + " " + key)
+            for key, value in items:
+                # Use bullet points instead of icons and connectors
+                bullet = "• " if depth == 0 else "  " * depth + "• "
+                tree_lines.append(bullet + key)
                 
                 if isinstance(value, dict) and value:
-                    extension = "    " if is_last_item else "│   "
-                    print_tree(value, prefix + extension, is_last_item, depth + 1)
+                    print_tree(value, depth + 1)
     
     print_tree(tree)
     
@@ -1295,7 +1282,7 @@ if uploaded_file is not None:
         st.session_state.sitemap_results = None
     
     # Generate button
-    if st.button("🚀 Generate Sitemap", type="primary", use_container_width=True):
+    if st.button("🚀 Generate Sitemap", type="secondary", use_container_width=True):
         if not GEMINI_API_KEY:
             st.error("❌ GEMINI_API_KEY not found in .env file! Please check the .env file.")
         else:
