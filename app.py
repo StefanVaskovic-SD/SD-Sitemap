@@ -79,6 +79,30 @@ st.markdown("""
     div[data-testid="stFileUploader"] > div > div > button {
         display: none !important;
     }
+    /* Style Generate Sitemap button - white background, black text */
+    button[kind="primary"]:has-text("Generate Sitemap"),
+    button[aria-label*="Generate Sitemap"] {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+    }
+    button[kind="primary"]:has-text("Generate Sitemap"):hover,
+    button[aria-label*="Generate Sitemap"]:hover {
+        background-color: #f0f0f0 !important;
+        color: black !important;
+    }
+    /* Style Download sitemap button in Structure tab - white background, black text, no icon */
+    div[data-testid="stDownloadButton"] button:has-text("Download sitemap"),
+    button[kind="secondary"]:has-text("Download sitemap") {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+    }
+    div[data-testid="stDownloadButton"] button:has-text("Download sitemap"):hover,
+    button[kind="secondary"]:has-text("Download sitemap"):hover {
+        background-color: #f0f0f0 !important;
+        color: black !important;
+    }
     </style>
     <script>
     // Change text in upload box from "Drag and drop file here" to "Drag and drop the file here"
@@ -90,6 +114,31 @@ st.markdown("""
                 textElement.textContent = textElement.textContent.replace('Drag and drop file here', 'Drag and drop the file here');
             }
         }
+        
+        // Style Generate Sitemap button - white background, black text
+        const generateButtons = document.querySelectorAll('button');
+        generateButtons.forEach(btn => {
+            if (btn.textContent.includes('Generate Sitemap')) {
+                btn.style.backgroundColor = 'white';
+                btn.style.color = 'black';
+                btn.style.border = '1px solid #ccc';
+            }
+        });
+        
+        // Style Download sitemap button - white background, black text, remove icon
+        const downloadButtons = document.querySelectorAll('button');
+        downloadButtons.forEach(btn => {
+            if (btn.textContent.includes('Download sitemap')) {
+                btn.style.backgroundColor = 'white';
+                btn.style.color = 'black';
+                btn.style.border = '1px solid #ccc';
+                // Remove icon if present
+                const icon = btn.querySelector('svg');
+                if (icon) {
+                    icon.remove();
+                }
+            }
+        });
     });
     </script>
     """, unsafe_allow_html=True)
@@ -1231,26 +1280,25 @@ if uploaded_file is not None:
         if not GEMINI_API_KEY:
             st.error("❌ GEMINI_API_KEY not found in .env file! Please check the .env file.")
         else:
-            with st.spinner("⏳ Analyzing questions and answers..."):
-                try:
-                    # Extract QA pairs
-                    qa_pairs = extract_qa_pairs(df, question_column, answer_column)
+            try:
+                # Extract QA pairs
+                qa_pairs = extract_qa_pairs(df, question_column, answer_column)
+                
+                if not qa_pairs:
+                    st.warning("⚠️ No valid question-answer pairs found!")
+                    st.session_state.sitemap_results = None
+                else:
+                    # Analysis with Gemini AI
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
                     
-                    if not qa_pairs:
-                        st.warning("⚠️ No valid question-answer pairs found!")
-                        st.session_state.sitemap_results = None
-                    else:
-                        # Analysis with Gemini AI
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        status_text.text("🤖 Communicating with Gemini AI...")
-                        progress_bar.progress(30)
-                        
-                        sitemap = analyze_with_gemini(qa_pairs)
-                        
-                        progress_bar.progress(100)
-                        status_text.text("✅ Sitemap generated!")
+                    status_text.text("🤖 Communicating with Gemini AI...")
+                    progress_bar.progress(30)
+                    
+                    sitemap = analyze_with_gemini(qa_pairs)
+                    
+                    progress_bar.progress(100)
+                    status_text.text("✅ Sitemap generated!")
                         
                         # Extract client name for filename
                         client_name = extract_client_name(df)
@@ -1294,18 +1342,19 @@ if uploaded_file is not None:
         
         with tab1:
             # Header with title and download button in same line
-            col1, col2 = st.columns([1, 1])
+            col1, col2 = st.columns([10, 1])
             with col1:
                 st.subheader("Structure")
             with col2:
                 if parsed_urls:
                     tree_structure = create_folder_tree(parsed_urls)
                     st.download_button(
-                        label="💾 Download sitemap",
+                        label="Download sitemap",
                         data=tree_structure,
                         file_name=f"sitemap_structure-{filename_suffix}.txt",
                         mime="text/plain",
-                        key="download_structure"
+                        key="download_structure",
+                        use_container_width=True
                     )
             
             if parsed_urls:
@@ -1360,23 +1409,30 @@ if uploaded_file is not None:
         
         with tab4:
             st.subheader("Statistics")
-            col1, col2, col3 = st.columns(3)
             
-            with col1:
-                st.metric("Total Questions", len(qa_pairs))
-            with col2:
-                st.metric("Total Pages", len(parsed_urls) if parsed_urls else 0)
-            with col3:
-                st.metric("Total CSV Rows", results['df_rows'])
-            
-            st.metric("CSV Columns", results['df_columns'])
-            
-            # Display first few QA pairs
-            st.subheader("Sample Questions and Answers")
-            for i, pair in enumerate(qa_pairs[:5], 1):
-                with st.expander(f"Question {pair['id']}"):
-                    st.write("**Question:**", pair['question'])
-                    st.write("**Answer:**", pair['answer'][:200] + "..." if len(pair['answer']) > 200 else pair['answer'])
+            if parsed_urls:
+                # Calculate main pages (root level) and subpages (have parent)
+                main_pages = []
+                subpages = []
+                
+                for url_data in parsed_urls:
+                    url = url_data['url']
+                    parsed = urlparse(url)
+                    path_parts = [p for p in parsed.path.split('/') if p]
+                    
+                    # Main page is root level (only 1 part) or homepage
+                    if len(path_parts) <= 1:
+                        main_pages.append(url_data)
+                    else:
+                        subpages.append(url_data)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Total Pages", len(parsed_urls))
+                with col2:
+                    st.metric("Main Pages", len(main_pages))
+                
+                st.metric("Subpages", len(subpages))
 
 else:
     pass
