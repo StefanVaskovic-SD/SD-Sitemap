@@ -410,8 +410,8 @@ def parse_sitemap_xml(xml_content: str) -> List[Dict]:
     
     return urls
 
-# Function for creating visual tree HTML with nodes and connections
-def create_visual_tree_html(urls: List[Dict]) -> str:
+# Function for creating visual tree HTML with nodes and connections - REMOVED (no longer used)
+def _create_visual_tree_html_removed(urls: List[Dict]) -> str:
     """Creates visual node-based tree visualization of sitemap"""
     # Build tree structure
     tree = {}
@@ -1336,8 +1336,8 @@ if uploaded_file is not None:
         else:
             filename_suffix = client_name
         
-        # Tabs for displaying results - reordered: Structure, XML Sitemap, Visual Sitemap, Statistics
-        tab1, tab2, tab3, tab4 = st.tabs(["📁 Suggested sitemap", "📄 XML Sitemap", "🗺️ Visual Sitemap", "📊 Statistics"])
+        # Tabs for displaying results - only Structure and Statistics
+        tab1, tab2 = st.tabs(["📁 Suggested sitemap", "📊 Statistics"])
         
         with tab1:
             # Header with title and download button in same line
@@ -1373,40 +1373,6 @@ if uploaded_file is not None:
                 st.warning("⚠️ Cannot parse sitemap for structure.")
         
         with tab2:
-            st.subheader("Generated XML Sitemap")
-            st.code(sitemap, language="xml")
-            
-            # Download button with key to prevent refresh
-            st.download_button(
-                label="💾 Download Sitemap",
-                data=sitemap,
-                file_name=f"sitemap_xml-{filename_suffix}.xml",
-                mime="application/xml",
-                key="download_xml_sitemap"
-            )
-        
-        with tab3:
-            st.subheader("🗺️ Visual Sitemap - Tree Structure")
-            st.info("💡 If the page freezes, use the XML Sitemap tab instead.")
-            
-            if parsed_urls:
-                st.info(f"📊 Displaying {len(parsed_urls)} pages in tree structure")
-                
-                # Create visual tree with error handling
-                try:
-                    tree_html = create_visual_tree_html(parsed_urls)
-                    st.components.v1.html(tree_html, height=600, scrolling=True)
-                except Exception as e:
-                    st.error(f"Error creating visual tree: {str(e)}")
-                    st.info("Trying alternative display...")
-                    
-                    # Alternative display - formatted tree text
-                    tree_structure = create_folder_tree(parsed_urls)
-                    st.code(tree_structure, language="text")
-            else:
-                st.warning("⚠️ Cannot parse sitemap for visualization.")
-        
-        with tab4:
             st.subheader("Statistics")
             
             if parsed_urls:
@@ -1425,13 +1391,13 @@ if uploaded_file is not None:
                     else:
                         subpages.append(url_data)
                 
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Total Pages", len(parsed_urls))
                 with col2:
                     st.metric("Main Pages", len(main_pages))
-                
-                st.metric("Subpages", len(subpages))
+                with col3:
+                    st.metric("Subpages", len(subpages))
 
 else:
     pass
