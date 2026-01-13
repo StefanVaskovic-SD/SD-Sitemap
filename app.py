@@ -1315,11 +1315,10 @@ if uploaded_file is not None:
                         'df_rows': len(df),
                         'df_columns': len(df.columns)
                     }
-                
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-                    st.exception(e)
-                    st.session_state.sitemap_results = None
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+                st.exception(e)
+                st.session_state.sitemap_results = None
     
     # Display results if they exist in session state
     if st.session_state.sitemap_results:
