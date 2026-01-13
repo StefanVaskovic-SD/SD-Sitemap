@@ -1343,7 +1343,5 @@ if uploaded_file is not None:
                     st.write("**Answer:**", pair['answer'][:200] + "..." if len(pair['answer']) > 200 else pair['answer'])
 
 else:
-    
-
-
+    pass
 
