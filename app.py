@@ -83,43 +83,48 @@ st.markdown("Generate a sitemap based on answers in the Discovery questionnaire.
 with st.sidebar:
     st.markdown("### 📋 Instructions")
     
-    st.markdown("""
-1. **If you ALREADY have a questionnaire CSV:**
-   - Upload your questionnaire CSV file.
-   - Then continue from step 4.
-
-2. **If you DO NOT have a questionnaire CSV:**
-   - Take the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
-   - Paste that content into the AI and upload the questionnaire csv as an example""")
-    
-    # Download button with direct URL
+    # CSV URL for download link
     csv_url = "https://cdn.prod.website-files.com/69316d64cadab5d24822f841/694e78594d8da777e4cbf125_questionnaire-kolasin-valleys-website.csv"
     
-    # Fetch CSV content from URL
+    # Fetch CSV content from URL for download
     try:
         with urllib.request.urlopen(csv_url) as response:
             example_csv = response.read().decode('utf-8')
-        st.download_button(
-            label="(download csv example)",
-            data=example_csv,
-            file_name="questionnaire-kolasin-valleys-website.csv",
-            mime="text/csv",
-            key="download_example_csv_sidebar",
-            use_container_width=False
-        )
-    except Exception as e:
-        st.markdown(f'<a href="{csv_url}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline;">(download csv example)</a>', unsafe_allow_html=True)
+        # Create base64 encoded data URL for download
+        b64_csv = base64.b64encode(example_csv.encode()).decode()
+        download_link = f'<a href="data:text/csv;base64,{b64_csv}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">questionnaire csv</a>'
+    except Exception:
+        # Fallback to direct URL link
+        download_link = f'<a href="{csv_url}" download="questionnaire-kolasin-valleys-website.csv" style="color: #1f77b4; text-decoration: underline; cursor: pointer;">questionnaire csv</a>'
     
-    st.markdown("""   and use this prompt:""")
+    st.markdown(f"""
+**Step 1: Prepare .csv file**
+
+- If you're starting from scratch and you haven't used any other Studio Direction tool:
+  - Prepare the questions and answers from your existing questionnaire (Word, PDF, email, notes, etc.).
+  - Paste that content into the AI and upload the {download_link} as an example and use this prompt:
+    """, unsafe_allow_html=True)
     
     st.code("""Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.""", language=None)
     
-    st.markdown("""   - Download and save the CSV file that the AI returns.
+    st.markdown("""
+  - Download and save the .csv file that the AI returns.
 
-3. Upload the CSV file here in the app.
-4. Select the columns that contain questions and answers.
-5. Click on **"Generate Sitemap"**.
-6. Download the generated XML sitemap.""")
+- If you already have the file from some other Studio Direction tool skip step 1.
+
+**Step 2: Import your data**
+
+- Drag and drop or upload the .csv file here on the right.
+
+**Step 3: Setup**
+
+- Select the columns that contain questions and answers.
+
+**Step 4: Generate and download the sitemap**
+
+- Click button Generate Sitemap.
+- Download the generated XML sitemap.
+    """)
 
 
 
