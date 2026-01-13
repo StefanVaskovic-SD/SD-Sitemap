@@ -1240,8 +1240,6 @@ if uploaded_file is not None:
                         st.warning("⚠️ No valid question-answer pairs found!")
                         st.session_state.sitemap_results = None
                     else:
-                        st.info(f"📝 Found {len(qa_pairs)} question-answer pairs")
-                        
                         # Analysis with Gemini AI
                         progress_bar = st.progress(0)
                         status_text = st.empty()
@@ -1253,9 +1251,6 @@ if uploaded_file is not None:
                         
                         progress_bar.progress(100)
                         status_text.text("✅ Sitemap generated!")
-                        
-                        # Display results
-                        st.success("✅ Sitemap successfully generated!")
                         
                         # Extract client name for filename
                         client_name = extract_client_name(df)
@@ -1294,10 +1289,42 @@ if uploaded_file is not None:
         else:
             filename_suffix = client_name
         
-        # Tabs for displaying results
-        tab1, tab2, tab3, tab4 = st.tabs(["📄 XML Sitemap", "🗺️ Visual Sitemap", "📁 Structure", "📊 Statistics"])
+        # Tabs for displaying results - reordered: Structure, XML Sitemap, Visual Sitemap, Statistics
+        tab1, tab2, tab3, tab4 = st.tabs(["📁 Suggested sitemap", "📄 XML Sitemap", "🗺️ Visual Sitemap", "📊 Statistics"])
         
         with tab1:
+            # Header with title and download button in same line
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                st.subheader("Structure")
+            with col2:
+                if parsed_urls:
+                    tree_structure = create_folder_tree(parsed_urls)
+                    st.download_button(
+                        label="💾 Download sitemap",
+                        data=tree_structure,
+                        file_name=f"sitemap_structure-{filename_suffix}.txt",
+                        mime="text/plain",
+                        key="download_structure"
+                    )
+            
+            if parsed_urls:
+                # Create folder tree
+                try:
+                    if 'tree_structure' not in locals():
+                        tree_structure = create_folder_tree(parsed_urls)
+                    st.code(tree_structure, language="text")
+                except Exception as e:
+                    st.error(f"Error creating structure: {str(e)}")
+                    
+                    # Alternative display
+                    st.markdown("### 📋 URL List:")
+                    for url_data in parsed_urls:
+                        st.markdown(f"- `{url_data['url']}`")
+            else:
+                st.warning("⚠️ Cannot parse sitemap for structure.")
+        
+        with tab2:
             st.subheader("Generated XML Sitemap")
             st.code(sitemap, language="xml")
             
@@ -1310,7 +1337,7 @@ if uploaded_file is not None:
                 key="download_xml_sitemap"
             )
         
-        with tab2:
+        with tab3:
             st.subheader("🗺️ Visual Sitemap - Tree Structure")
             st.info("💡 If the page freezes, use the XML Sitemap tab instead.")
             
@@ -1330,34 +1357,6 @@ if uploaded_file is not None:
                     st.code(tree_structure, language="text")
             else:
                 st.warning("⚠️ Cannot parse sitemap for visualization.")
-        
-        with tab3:
-            st.subheader("📁 Application Structure")
-            if parsed_urls:
-                st.info(f"📊 Displaying {len(parsed_urls)} pages in structure")
-                
-                # Create folder tree
-                try:
-                    tree_structure = create_folder_tree(parsed_urls)
-                    st.code(tree_structure, language="text")
-                    
-                    # Download tree structure with key to prevent refresh
-                    st.download_button(
-                        label="💾 Download Structure",
-                        data=tree_structure,
-                        file_name=f"sitemap_structure-{filename_suffix}.txt",
-                        mime="text/plain",
-                        key="download_structure"
-                    )
-                except Exception as e:
-                    st.error(f"Error creating structure: {str(e)}")
-                    
-                    # Alternative display
-                    st.markdown("### 📋 URL List:")
-                    for url_data in parsed_urls:
-                        st.markdown(f"- `{url_data['url']}`")
-            else:
-                st.warning("⚠️ Cannot parse sitemap for structure.")
         
         with tab4:
             st.subheader("Statistics")
