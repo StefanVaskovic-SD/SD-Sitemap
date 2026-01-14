@@ -96,7 +96,7 @@ st.markdown("""
     [data-testid="stSidebar"] {
         min-width: 380px !important;
         max-width: 380px !important;
-        background-color: var(--color-black-90) !important;
+        background-color: #0f0f0f !important;
     }
     
     [data-testid="stSidebar"] * {
@@ -201,13 +201,13 @@ st.markdown("""
         border-color: var(--color-white-50) !important;
     }
     
-    /* File uploader styling - dark theme */
+    /* File uploader styling - dark theme, no border */
     div[data-testid="stFileUploader"] {
         background-color: var(--color-black-90) !important;
-        border: 2px dashed var(--color-white-20) !important;
+        border: none !important;
     }
     div[data-testid="stFileUploader"]:hover {
-        border-color: var(--color-white-40) !important;
+        border: none !important;
     }
     div[data-testid="stFileUploader"] * {
         color: var(--color-white) !important;
@@ -257,6 +257,16 @@ st.markdown("""
     /* Streamlit specific elements - dark theme */
     [data-testid="stAppViewContainer"] {
         background-color: var(--color-black) !important;
+    }
+    
+    /* Header styling - dark */
+    header[data-testid="stHeader"],
+    .stAppHeader,
+    [class*="st-emotion-cache-40nadn"],
+    [class*="e1o8oa9v1"],
+    header,
+    [data-testid="stHeader"] {
+        background-color: #080808 !important;
     }
     
     /* All Streamlit text elements - white */
