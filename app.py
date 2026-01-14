@@ -213,6 +213,21 @@ st.markdown("""
         color: var(--color-white) !important;
     }
     
+    /* Prompt box styling */
+    .prompt-box {
+        border: 1px solid rgba(245, 245, 247, 0.15) !important;
+        border-left: 4px solid #f5f5f7 !important;
+        border-radius: 4px !important;
+        padding: 1rem !important;
+        margin: 0.5rem 0 !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 0.9rem !important;
+        white-space: pre-wrap !important;
+        position: relative !important;
+        background-color: rgba(245, 245, 247, 0.03) !important;
+        color: #f5f5f7 !important;
+    }
+    
     /* Tabs styling - white text */
     button[data-baseweb="tab"] {
         color: var(--color-white-60) !important;
@@ -386,7 +401,7 @@ with st.sidebar:
   - Paste that content into the AI and upload the {download_link} as an example and use this prompt:
     """, unsafe_allow_html=True)
     
-    st.code("""Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.""", language=None)
+    st.markdown("""<div class="prompt-box">Could you return this content in a CSV file, where questions are in column A and answers are in column B? Please also add a header row with the column names: "question" and "answer". Use uploaded csv as an example.</div>""", unsafe_allow_html=True)
     
     st.markdown("""
   - Download and save the .csv file that the AI returns.
