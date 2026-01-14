@@ -38,72 +38,201 @@ st.set_page_config(
 # Custom CSS to expand sidebar width, style download button, and hide permalink
 st.markdown("""
     <style>
+    /* Import custom fonts from fonts folder */
+    @font-face {
+        font-family: 'SuisseIntl';
+        src: url('fonts/SuisseIntl-Regular.woff2') format('woff2');
+        font-weight: normal;
+        font-style: normal;
+    }
+    @font-face {
+        font-family: 'SuisseIntl';
+        src: url('fonts/SuisseIntl-Bold.woff2') format('woff2');
+        font-weight: bold;
+        font-style: normal;
+    }
+    
+    /* Color Variables */
+    :root {
+        --color-black: #080808;
+        --color-white: #f5f5f7;
+        --color-black-90: rgba(8, 8, 8, 0.9);
+        --color-black-80: rgba(8, 8, 8, 0.8);
+        --color-black-70: rgba(8, 8, 8, 0.7);
+        --color-black-60: rgba(8, 8, 8, 0.6);
+        --color-black-50: rgba(8, 8, 8, 0.5);
+        --color-black-40: rgba(8, 8, 8, 0.4);
+        --color-black-30: rgba(8, 8, 8, 0.3);
+        --color-black-20: rgba(8, 8, 8, 0.2);
+        --color-black-10: rgba(8, 8, 8, 0.1);
+        --color-white-90: rgba(245, 245, 247, 0.9);
+        --color-white-80: rgba(245, 245, 247, 0.8);
+        --color-white-70: rgba(245, 245, 247, 0.7);
+        --color-white-60: rgba(245, 245, 247, 0.6);
+        --color-white-50: rgba(245, 245, 247, 0.5);
+        --color-white-40: rgba(245, 245, 247, 0.4);
+        --color-white-30: rgba(245, 245, 247, 0.3);
+        --color-white-20: rgba(245, 245, 247, 0.2);
+        --color-white-10: rgba(245, 245, 247, 0.1);
+    }
+    
+    /* Apply custom font to entire app - regular by default */
+    * {
+        font-family: 'SuisseIntl', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        font-weight: normal !important;
+    }
+    
+    /* Main background - white */
+    .main .block-container {
+        background-color: var(--color-white) !important;
+    }
+    
+    /* Sidebar styling */
     [data-testid="stSidebar"] {
         min-width: 380px !important;
         max-width: 380px !important;
+        background-color: var(--color-white) !important;
     }
-    /* Style download button to look like inline link */
-    div[data-testid="stDownloadButton"] button {
-        background: transparent !important;
-        border: none !important;
-        color: #1f77b4 !important;
-        text-decoration: underline !important;
-        padding: 0 !important;
-        font-size: inherit !important;
-        box-shadow: none !important;
-        height: auto !important;
-        margin: 0 !important;
-        display: inline !important;
+    
+    [data-testid="stSidebar"] * {
+        color: var(--color-black) !important;
+    }
+    
+    /* Headers - black, bold font */
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--color-black) !important;
+        font-family: 'SuisseIntl', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        font-weight: bold !important;
+    }
+    
+    /* Subheaders and all headers - use bold font */
+    [data-testid="stHeader"] h1,
+    [data-testid="stHeader"] h2,
+    [data-testid="stHeader"] h3,
+    [data-testid="stHeader"] h4,
+    [data-testid="stHeader"] h5,
+    [data-testid="stHeader"] h6,
+    .stSubheader,
+    [data-testid="stMarkdownContainer"] h1,
+    [data-testid="stMarkdownContainer"] h2,
+    [data-testid="stMarkdownContainer"] h3,
+    [data-testid="stMarkdownContainer"] h4,
+    [data-testid="stMarkdownContainer"] h5,
+    [data-testid="stMarkdownContainer"] h6,
+    [data-testid="stMarkdownContainer"] strong,
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3,
+    div[data-testid="stMarkdownContainer"] h4,
+    div[data-testid="stMarkdownContainer"] h5,
+    div[data-testid="stMarkdownContainer"] h6 {
+        font-family: 'SuisseIntl', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        font-weight: bold !important;
+    }
+    
+    /* Text - black, regular font */
+    p, span, div, label, li, td, th {
+        color: var(--color-black) !important;
+        font-family: 'SuisseIntl', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         font-weight: normal !important;
     }
-    div[data-testid="stDownloadButton"] button:hover {
-        color: #0d5a8a !important;
-        background: transparent !important;
-        text-decoration: underline !important;
-    }
+    
     /* Hide permalink/anchor link next to H1 */
     [data-testid="stHeaderActionElements"] {
         display: none !important;
     }
+    
     /* Remove ID from H1 */
     h1[id] {
         scroll-margin-top: 0;
     }
+    
     /* Hide file size limit text below file uploader */
     div[data-testid="stFileUploader"] > div > small {
         display: none !important;
     }
+    
     /* Hide Browse files button */
     div[data-testid="stFileUploader"] button[kind="secondary"],
     div[data-testid="stFileUploader"] button[type="button"],
     div[data-testid="stFileUploader"] > div > div > button {
         display: none !important;
     }
+    
     /* Style all secondary buttons - white background, black text, no underline, single line */
     button[kind="secondary"] {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #ccc !important;
+        background-color: var(--color-white) !important;
+        color: var(--color-black) !important;
+        border: 1px solid var(--color-black-20) !important;
         text-decoration: none !important;
         white-space: nowrap !important;
     }
     button[kind="secondary"]:hover {
-        background-color: #f0f0f0 !important;
-        color: black !important;
+        background-color: var(--color-white-80) !important;
+        color: var(--color-black) !important;
         text-decoration: none !important;
+        border-color: var(--color-black-30) !important;
     }
+    
     /* Style Download button specifically */
     div[data-testid="stDownloadButton"] button {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #ccc !important;
+        background-color: var(--color-white) !important;
+        color: var(--color-black) !important;
+        border: 1px solid var(--color-black-20) !important;
         text-decoration: none !important;
         white-space: nowrap !important;
     }
     div[data-testid="stDownloadButton"] button:hover {
-        background-color: #f0f0f0 !important;
-        color: black !important;
+        background-color: var(--color-white-80) !important;
+        color: var(--color-black) !important;
         text-decoration: none !important;
+        border-color: var(--color-black-30) !important;
+    }
+    
+    /* File uploader styling */
+    div[data-testid="stFileUploader"] {
+        background-color: var(--color-white) !important;
+        border: 2px dashed var(--color-black-20) !important;
+    }
+    div[data-testid="stFileUploader"]:hover {
+        border-color: var(--color-black-40) !important;
+    }
+    
+    /* Tabs styling */
+    button[data-baseweb="tab"] {
+        color: var(--color-black-60) !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: var(--color-black) !important;
+    }
+    
+    /* Code blocks */
+    code {
+        background-color: var(--color-white-50) !important;
+        color: var(--color-black) !important;
+        border: 1px solid var(--color-black-10) !important;
+    }
+    
+    /* Metrics/Statistics */
+    [data-testid="stMetricValue"] {
+        color: var(--color-black) !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: var(--color-black-70) !important;
+    }
+    
+    /* Info/Warning/Error boxes */
+    .stAlert {
+        background-color: var(--color-white-80) !important;
+        border-left: 4px solid var(--color-black-30) !important;
+    }
+    
+    /* Progress bar */
+    [data-testid="stProgressBar"] > div {
+        background-color: var(--color-black-10) !important;
+    }
+    [data-testid="stProgressBar"] > div > div {
+        background-color: var(--color-black) !important;
     }
     </style>
     <script>
@@ -117,12 +246,12 @@ st.markdown("""
             }
         }
         
-        // Style all secondary buttons - white background, black text, no underline
+        // Style all secondary buttons - white background (#f5f5f7), black text (#080808), no underline
         const allSecondaryButtons = document.querySelectorAll('button[kind="secondary"]');
         allSecondaryButtons.forEach(btn => {
-            btn.style.backgroundColor = 'white';
-            btn.style.color = 'black';
-            btn.style.border = '1px solid #ccc';
+            btn.style.backgroundColor = '#f5f5f7';
+            btn.style.color = '#080808';
+            btn.style.border = '1px solid rgba(8, 8, 8, 0.2)';
             btn.style.textDecoration = 'none';
             btn.style.whiteSpace = 'nowrap';
         });
@@ -130,9 +259,9 @@ st.markdown("""
         // Style Download sitemap button - remove icon, ensure single line
         const downloadButtons = document.querySelectorAll('[data-testid="stDownloadButton"] button');
         downloadButtons.forEach(btn => {
-            btn.style.backgroundColor = 'white';
-            btn.style.color = 'black';
-            btn.style.border = '1px solid #ccc';
+            btn.style.backgroundColor = '#f5f5f7';
+            btn.style.color = '#080808';
+            btn.style.border = '1px solid rgba(8, 8, 8, 0.2)';
             btn.style.textDecoration = 'none';
             btn.style.whiteSpace = 'nowrap';
             // Remove icon if present
@@ -149,9 +278,9 @@ st.markdown("""
                 const allSecondaryButtons = document.querySelectorAll('button[kind="secondary"]');
                 allSecondaryButtons.forEach(btn => {
                     if (btn.textContent.includes('Download sitemap')) {
-                        btn.style.backgroundColor = 'white';
-                        btn.style.color = 'black';
-                        btn.style.border = '1px solid #ccc';
+                        btn.style.backgroundColor = '#f5f5f7';
+                        btn.style.color = '#080808';
+                        btn.style.border = '1px solid rgba(8, 8, 8, 0.2)';
                         const icon = btn.querySelector('svg');
                         if (icon) {
                             icon.remove();
