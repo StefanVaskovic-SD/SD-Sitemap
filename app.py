@@ -82,30 +82,35 @@ st.markdown("""
         font-weight: normal !important;
     }
     
-    /* Main background - white */
+    /* Main background - dark */
     .main .block-container {
-        background-color: var(--color-white) !important;
+        background-color: var(--color-black) !important;
     }
     
-    /* Sidebar styling */
+    /* Main app background */
+    .stApp {
+        background-color: var(--color-black) !important;
+    }
+    
+    /* Sidebar styling - darker shade */
     [data-testid="stSidebar"] {
         min-width: 380px !important;
         max-width: 380px !important;
-        background-color: var(--color-white) !important;
+        background-color: var(--color-black-90) !important;
     }
     
     [data-testid="stSidebar"] * {
-        color: var(--color-black) !important;
+        color: var(--color-white) !important;
     }
     
-    /* Headers - black, bold font */
+    /* Headers - white, bold font */
     h1, h2, h3, h4, h5, h6 {
-        color: var(--color-black) !important;
+        color: var(--color-white) !important;
         font-family: 'SuisseIntl', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         font-weight: bold !important;
     }
     
-    /* Subheaders and all headers - use bold font */
+    /* Subheaders and all headers - use bold font, white */
     [data-testid="stHeader"] h1,
     [data-testid="stHeader"] h2,
     [data-testid="stHeader"] h3,
@@ -126,15 +131,22 @@ st.markdown("""
     div[data-testid="stMarkdownContainer"] h4,
     div[data-testid="stMarkdownContainer"] h5,
     div[data-testid="stMarkdownContainer"] h6 {
+        color: var(--color-white) !important;
         font-family: 'SuisseIntl', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         font-weight: bold !important;
     }
     
-    /* Text - black, regular font */
+    /* Text - white, regular font */
     p, span, div, label, li, td, th {
-        color: var(--color-black) !important;
+        color: var(--color-white) !important;
         font-family: 'SuisseIntl', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         font-weight: normal !important;
+    }
+    
+    /* All text elements - white */
+    body, .main, .block-container, [data-testid="stAppViewContainer"] {
+        color: var(--color-white) !important;
+        background-color: var(--color-black) !important;
     }
     
     /* Hide permalink/anchor link next to H1 */
@@ -163,76 +175,118 @@ st.markdown("""
     button[kind="secondary"] {
         background-color: var(--color-white) !important;
         color: var(--color-black) !important;
-        border: 1px solid var(--color-black-20) !important;
+        border: 1px solid var(--color-white-30) !important;
         text-decoration: none !important;
         white-space: nowrap !important;
     }
     button[kind="secondary"]:hover {
-        background-color: var(--color-white-80) !important;
+        background-color: var(--color-white-90) !important;
         color: var(--color-black) !important;
         text-decoration: none !important;
-        border-color: var(--color-black-30) !important;
+        border-color: var(--color-white-50) !important;
     }
     
     /* Style Download button specifically */
     div[data-testid="stDownloadButton"] button {
         background-color: var(--color-white) !important;
         color: var(--color-black) !important;
-        border: 1px solid var(--color-black-20) !important;
+        border: 1px solid var(--color-white-30) !important;
         text-decoration: none !important;
         white-space: nowrap !important;
     }
     div[data-testid="stDownloadButton"] button:hover {
-        background-color: var(--color-white-80) !important;
+        background-color: var(--color-white-90) !important;
         color: var(--color-black) !important;
         text-decoration: none !important;
-        border-color: var(--color-black-30) !important;
+        border-color: var(--color-white-50) !important;
     }
     
-    /* File uploader styling */
+    /* File uploader styling - dark theme */
     div[data-testid="stFileUploader"] {
-        background-color: var(--color-white) !important;
-        border: 2px dashed var(--color-black-20) !important;
+        background-color: var(--color-black-90) !important;
+        border: 2px dashed var(--color-white-20) !important;
     }
     div[data-testid="stFileUploader"]:hover {
-        border-color: var(--color-black-40) !important;
+        border-color: var(--color-white-40) !important;
+    }
+    div[data-testid="stFileUploader"] * {
+        color: var(--color-white) !important;
     }
     
-    /* Tabs styling */
+    /* Tabs styling - white text */
     button[data-baseweb="tab"] {
-        color: var(--color-black-60) !important;
+        color: var(--color-white-60) !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
-        color: var(--color-black) !important;
+        color: var(--color-white) !important;
     }
     
-    /* Code blocks */
+    /* Code blocks - dark background, white text */
     code {
-        background-color: var(--color-white-50) !important;
-        color: var(--color-black) !important;
-        border: 1px solid var(--color-black-10) !important;
+        background-color: var(--color-black-90) !important;
+        color: var(--color-white) !important;
+        border: 1px solid var(--color-white-10) !important;
     }
     
-    /* Metrics/Statistics */
+    /* Metrics/Statistics - white text */
     [data-testid="stMetricValue"] {
-        color: var(--color-black) !important;
+        color: var(--color-white) !important;
     }
     [data-testid="stMetricLabel"] {
-        color: var(--color-black-70) !important;
+        color: var(--color-white-70) !important;
     }
     
-    /* Info/Warning/Error boxes */
+    /* Info/Warning/Error boxes - dark theme */
     .stAlert {
-        background-color: var(--color-white-80) !important;
-        border-left: 4px solid var(--color-black-30) !important;
+        background-color: var(--color-black-90) !important;
+        border-left: 4px solid var(--color-white-30) !important;
+        color: var(--color-white) !important;
+    }
+    .stAlert * {
+        color: var(--color-white) !important;
     }
     
-    /* Progress bar */
+    /* Progress bar - dark theme */
     [data-testid="stProgressBar"] > div {
-        background-color: var(--color-black-10) !important;
+        background-color: var(--color-white-10) !important;
     }
     [data-testid="stProgressBar"] > div > div {
+        background-color: var(--color-white) !important;
+    }
+    
+    /* Streamlit specific elements - dark theme */
+    [data-testid="stAppViewContainer"] {
         background-color: var(--color-black) !important;
+    }
+    
+    /* All Streamlit text elements - white */
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    [data-testid="stMarkdownContainer"] span,
+    [data-testid="stMarkdownContainer"] div:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) {
+        color: var(--color-white) !important;
+    }
+    
+    /* Expander styling */
+    [data-testid="stExpander"] {
+        background-color: var(--color-black-90) !important;
+        border: 1px solid var(--color-white-10) !important;
+    }
+    [data-testid="stExpander"] * {
+        color: var(--color-white) !important;
+    }
+    
+    /* Selectbox and other inputs */
+    [data-baseweb="select"] {
+        background-color: var(--color-black-90) !important;
+        color: var(--color-white) !important;
+    }
+    
+    /* Input fields */
+    input, textarea, select {
+        background-color: var(--color-black-90) !important;
+        color: var(--color-white) !important;
+        border-color: var(--color-white-20) !important;
     }
     </style>
     <script>
@@ -251,7 +305,7 @@ st.markdown("""
         allSecondaryButtons.forEach(btn => {
             btn.style.backgroundColor = '#f5f5f7';
             btn.style.color = '#080808';
-            btn.style.border = '1px solid rgba(8, 8, 8, 0.2)';
+            btn.style.border = '1px solid rgba(245, 245, 247, 0.3)';
             btn.style.textDecoration = 'none';
             btn.style.whiteSpace = 'nowrap';
         });
@@ -261,7 +315,7 @@ st.markdown("""
         downloadButtons.forEach(btn => {
             btn.style.backgroundColor = '#f5f5f7';
             btn.style.color = '#080808';
-            btn.style.border = '1px solid rgba(8, 8, 8, 0.2)';
+            btn.style.border = '1px solid rgba(245, 245, 247, 0.3)';
             btn.style.textDecoration = 'none';
             btn.style.whiteSpace = 'nowrap';
             // Remove icon if present
@@ -280,7 +334,7 @@ st.markdown("""
                     if (btn.textContent.includes('Download sitemap')) {
                         btn.style.backgroundColor = '#f5f5f7';
                         btn.style.color = '#080808';
-                        btn.style.border = '1px solid rgba(8, 8, 8, 0.2)';
+                        btn.style.border = '1px solid rgba(245, 245, 247, 0.3)';
                         const icon = btn.querySelector('svg');
                         if (icon) {
                             icon.remove();
